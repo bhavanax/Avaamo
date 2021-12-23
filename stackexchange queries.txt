@@ -1,0 +1,67 @@
+SELECT Top 50
+q.id, q.Title,q.CreationDate, q.Body question, answers.body answer, q.viewcount views, q.Score votes, q.AnswerCount, q.Tags
+
+FROM 
+  Posts answers
+
+INNER JOIN Posts q 
+  ON answers.parentid = q.id
+ 
+WHERE (answers.id = q.AcceptedAnswerId) AND q.Tags like '%openvino%' AND  q.viewcount > =200 AND q.CreationDate >=cast('2019-1-1' as datetime)
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+SELECT Top 50
+q.id, q.Title,q.CreationDate, q.Body question, answers.body answer, q.viewcount views, q.Score votes, q.AnswerCount, q.Tags
+
+FROM 
+  Posts answers
+
+INNER JOIN Posts q 
+  ON answers.parentid = q.id
+ 
+WHERE (answers.id = q.AcceptedAnswerId) AND q.Tags like '%openvino%' AND  q.viewcount > =200 AND q.CreationDate >=DATEADD(MONTH, -24, GETDATE())
+ORDER BY views desc;
+
+----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+SELECT 
+q.id, q.Title,q.CreationDate, q.Body question, answers.body answer, q.viewcount views, q.Score votes, q.AnswerCount, q.Tags
+
+FROM 
+  Posts answers
+
+INNER JOIN Posts q 
+  ON answers.parentid = q.id
+ 
+WHERE q.Tags like '%openvino%'
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+SELECT 
+q.id, q.Title,q.CreationDate, q.Body question, answers.body answer, q.viewcount views, q.Score votes, q.AnswerCount, q.Tags
+
+FROM 
+  Posts answers
+
+INNER JOIN Posts q 
+  ON answers.parentid = q.id
+ 
+WHERE (answers.id = q.AcceptedAnswerId) AND q.Tags like '%openvino%'  AND q.CreationDate >=cast('2019-1-1' as datetime)
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+SELECT
+id, Title,CreationDate, Body question, AnswerCount, CommentCount, viewcount views, Score votes, AnswerCount, Tags
+
+FROM 
+  Posts 
+ 
+WHERE Tags like '%openvino%' AND AnswerCount = 0 AND CommentCount = 0

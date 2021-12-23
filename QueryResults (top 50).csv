@@ -1,0 +1,2627 @@
+id,Title,CreationDate,question,answer,views,votes,AnswerCount,Tags
+"57007007","OpenVINO: How to build OpenCV with Inference Engine to enable loading models from Model Optimizer","2019-07-12 12:26:19","<p>I installed OpenVINO and want to run the following code on windows 10. </p>
+
+<pre><code>import numpy as np
+import cv2
+import sys
+
+from get_face_id import face_id_getter
+from check import check
+from win10toast import ToastNotifier 
+
+FP = 32
+
+targetId = 0
+toaster = None
+
+if '-use_notifications' in sys.argv:
+    toaster = ToastNotifier() 
+
+if len(sys.argv) &gt; 1 and '-m' in sys.argv:
+    FP =  16
+    targetId = cv2.dnn.DNN_TARGET_MYRIAD
+
+
+
+cap = cv2.VideoCapture(0)
+
+getter = None
+
+if '-get_face_id' in sys.argv:
+    getter = face_id_getter()
+
+weights = 'face-detection-adas-0001/FP{}/face-detection-adas-0001.bin'.format(FP)
+config = 'face-detection-adas-0001/FP{}/face-detection-adas-0001.xml'.format(FP)
+
+weights_emotions, config_emotions, emotions = None, None, None
+
+
+
+if len(sys.argv) &gt; 1 and '-use_emotions' in sys.argv:
+    weights_emotions = 'emotions-recognition-retail-0003/FP{}/emotions-recognition-retail-0003.bin'.format(FP)
+    config_emotions = 'emotions-recognition-retail-0003/FP{}/emotions-recognition-retail-0003.xml'.format(FP)
+framework = 'DLDT'
+
+model = cv2.dnn.readNet(weights, config, framework)
+model.setPreferableTarget(targetId=targetId)
+
+if len(sys.argv) &gt; 1 and '-use_emotions' in sys.argv:
+    emotions = cv2.dnn.readNet(weights_emotions, config_emotions, framework)
+    emotions.setPreferableTarget(targetId=targetId)
+
+emotions_decode = ('neutral', 'happy', 'sad', 'surprise', 'anger')
+
+names = [""Plotnikov Egor"", ""Vainberg Roman"", ""Sataev Emil"", ""Unknown person""]
+
+emotion_text = None
+
+while(True):
+    ret, frame = cap.read()
+
+    blob = cv2.dnn.blobFromImage(frame, size=(672, 384), crop=False)
+
+    have_nots = False
+
+    model.setInput(blob)
+    ans = model.forward()
+    for i in range(0, 200):
+        x_min, y_min, x_max, y_max = np.array(ans[0, 0, i, 3:7]) * np.array([640, 480, 640, 480])
+        if ans[0, 0, i, 2] &gt; 0.5:
+            cv2.rectangle(frame, (int(x_min), int(y_min)), (int(x_max), int(y_max)), ( 0, 255, 255))
+
+            if len(sys.argv) &gt; 1 and '-use_emotions' in sys.argv:
+                blob_emotions = cv2.dnn.blobFromImage(frame[int(y_min):int(y_max), int(x_min):int(x_max)], size=(64, 64), crop=False)
+                emotions.setInput(blob_emotions)
+                ans_emotions = emotions.forward()[0, : , 0 , 0]
+                ans_emotions = list(map(lambda x: 1 if x &gt; 0.5 else 0, ans_emotions))
+                _t = ''.join(list(map(str,ans_emotions))).find('1')
+                if _t == -1:
+                    _t = 0
+                emotion_text = emotions_decode[_t]
+
+            if '-get_face_id' in sys.argv:
+                _ans = getter.get_answer(frame[int(y_min):int(y_max), int(x_min):int(x_max)])
+
+                t = check('labels.txt', _ans)
+                #print(names[t])
+                font = cv2.FONT_HERSHEY_SIMPLEX 
+                cv2.putText(frame,names[t],(int(x_min), int(y_min)), font, 1,(255,255,255),2,cv2.LINE_AA)
+                if emotion_text != None:
+                    cv2.putText(frame,emotion_text,(int(x_min), int(y_max)), font, 1,(255,255,255),2,cv2.LINE_AA)
+
+            if '-use_notifications' in sys.argv and not have_nots:
+                toaster.show_toast(""Welcome, "" + names[t],"""")
+                have_nots = True
+
+    cv2.imshow('frame',frame)
+
+    if cv2.waitKey(1) &amp; 0xFF == ord('q'):
+        break
+
+
+cap.release()
+cv2.destroyAllWindows() 
+</code></pre>
+
+<p>I want to run a pre-trained OpenVINO model, but get the error:</p>
+
+<pre><code>v\modules\dnn\src\dnn.cpp:2670: error: (-2:Unspecified error) Build OpenCV with Inference Engine to enable loading models from Model Optimizer. in function 'cv::dnn::dnn4_v20190122::Net::readFromModelOptimizer'
+</code></pre>
+
+<p>I need to build OpenCV with Inference Engine. I'm not experienced in programming and don't know what this means.</p>
+
+<p>When I try this:
+<a href=""https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend"" rel=""nofollow noreferrer"">https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend</a></p>
+
+<p>and try</p>
+
+<pre><code>cmake \
+  -DWITH_INF_ENGINE=ON \
+  -DENABLE_CXX11=ON \
+  ...
+</code></pre>
+
+<p>in the C:\Program Files (x86)\IntelSWTools\openvino_2019.1.148\opencv\samples
+it gives an error saying: </p>
+
+<pre><code>CMake Error: The source directory ""C:/Program Files (x86)/IntelSWTools/openvino_2019.1.148/opencv/samples/..."" does not appear to contain CMakeLists.txt.
+</code></pre>
+
+<p>even though there is a CMakeLists.txt in that folder.</p>
+
+<p>Can someone please help me?</p>
+","<p>You can just use OpenCV from OpenVINO. It's already compiled with Intel's Inference Engine.</p>
+","6440","2","3","<python><opencv><cmake><openvino>"
+"57007007","OpenVINO: How to build OpenCV with Inference Engine to enable loading models from Model Optimizer","2019-07-12 12:26:19","<p>I installed OpenVINO and want to run the following code on windows 10. </p>
+
+<pre><code>import numpy as np
+import cv2
+import sys
+
+from get_face_id import face_id_getter
+from check import check
+from win10toast import ToastNotifier 
+
+FP = 32
+
+targetId = 0
+toaster = None
+
+if '-use_notifications' in sys.argv:
+    toaster = ToastNotifier() 
+
+if len(sys.argv) &gt; 1 and '-m' in sys.argv:
+    FP =  16
+    targetId = cv2.dnn.DNN_TARGET_MYRIAD
+
+
+
+cap = cv2.VideoCapture(0)
+
+getter = None
+
+if '-get_face_id' in sys.argv:
+    getter = face_id_getter()
+
+weights = 'face-detection-adas-0001/FP{}/face-detection-adas-0001.bin'.format(FP)
+config = 'face-detection-adas-0001/FP{}/face-detection-adas-0001.xml'.format(FP)
+
+weights_emotions, config_emotions, emotions = None, None, None
+
+
+
+if len(sys.argv) &gt; 1 and '-use_emotions' in sys.argv:
+    weights_emotions = 'emotions-recognition-retail-0003/FP{}/emotions-recognition-retail-0003.bin'.format(FP)
+    config_emotions = 'emotions-recognition-retail-0003/FP{}/emotions-recognition-retail-0003.xml'.format(FP)
+framework = 'DLDT'
+
+model = cv2.dnn.readNet(weights, config, framework)
+model.setPreferableTarget(targetId=targetId)
+
+if len(sys.argv) &gt; 1 and '-use_emotions' in sys.argv:
+    emotions = cv2.dnn.readNet(weights_emotions, config_emotions, framework)
+    emotions.setPreferableTarget(targetId=targetId)
+
+emotions_decode = ('neutral', 'happy', 'sad', 'surprise', 'anger')
+
+names = [""Plotnikov Egor"", ""Vainberg Roman"", ""Sataev Emil"", ""Unknown person""]
+
+emotion_text = None
+
+while(True):
+    ret, frame = cap.read()
+
+    blob = cv2.dnn.blobFromImage(frame, size=(672, 384), crop=False)
+
+    have_nots = False
+
+    model.setInput(blob)
+    ans = model.forward()
+    for i in range(0, 200):
+        x_min, y_min, x_max, y_max = np.array(ans[0, 0, i, 3:7]) * np.array([640, 480, 640, 480])
+        if ans[0, 0, i, 2] &gt; 0.5:
+            cv2.rectangle(frame, (int(x_min), int(y_min)), (int(x_max), int(y_max)), ( 0, 255, 255))
+
+            if len(sys.argv) &gt; 1 and '-use_emotions' in sys.argv:
+                blob_emotions = cv2.dnn.blobFromImage(frame[int(y_min):int(y_max), int(x_min):int(x_max)], size=(64, 64), crop=False)
+                emotions.setInput(blob_emotions)
+                ans_emotions = emotions.forward()[0, : , 0 , 0]
+                ans_emotions = list(map(lambda x: 1 if x &gt; 0.5 else 0, ans_emotions))
+                _t = ''.join(list(map(str,ans_emotions))).find('1')
+                if _t == -1:
+                    _t = 0
+                emotion_text = emotions_decode[_t]
+
+            if '-get_face_id' in sys.argv:
+                _ans = getter.get_answer(frame[int(y_min):int(y_max), int(x_min):int(x_max)])
+
+                t = check('labels.txt', _ans)
+                #print(names[t])
+                font = cv2.FONT_HERSHEY_SIMPLEX 
+                cv2.putText(frame,names[t],(int(x_min), int(y_min)), font, 1,(255,255,255),2,cv2.LINE_AA)
+                if emotion_text != None:
+                    cv2.putText(frame,emotion_text,(int(x_min), int(y_max)), font, 1,(255,255,255),2,cv2.LINE_AA)
+
+            if '-use_notifications' in sys.argv and not have_nots:
+                toaster.show_toast(""Welcome, "" + names[t],"""")
+                have_nots = True
+
+    cv2.imshow('frame',frame)
+
+    if cv2.waitKey(1) &amp; 0xFF == ord('q'):
+        break
+
+
+cap.release()
+cv2.destroyAllWindows() 
+</code></pre>
+
+<p>I want to run a pre-trained OpenVINO model, but get the error:</p>
+
+<pre><code>v\modules\dnn\src\dnn.cpp:2670: error: (-2:Unspecified error) Build OpenCV with Inference Engine to enable loading models from Model Optimizer. in function 'cv::dnn::dnn4_v20190122::Net::readFromModelOptimizer'
+</code></pre>
+
+<p>I need to build OpenCV with Inference Engine. I'm not experienced in programming and don't know what this means.</p>
+
+<p>When I try this:
+<a href=""https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend"" rel=""nofollow noreferrer"">https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend</a></p>
+
+<p>and try</p>
+
+<pre><code>cmake \
+  -DWITH_INF_ENGINE=ON \
+  -DENABLE_CXX11=ON \
+  ...
+</code></pre>
+
+<p>in the C:\Program Files (x86)\IntelSWTools\openvino_2019.1.148\opencv\samples
+it gives an error saying: </p>
+
+<pre><code>CMake Error: The source directory ""C:/Program Files (x86)/IntelSWTools/openvino_2019.1.148/opencv/samples/..."" does not appear to contain CMakeLists.txt.
+</code></pre>
+
+<p>even though there is a CMakeLists.txt in that folder.</p>
+
+<p>Can someone please help me?</p>
+","<p>You should add OpenCV to your environment variables.</p>
+
+<p>Open environment variables window: Type <code>environment variables</code> in search box. </p>
+
+<p>Edit <code>Path</code> from <code>System Variables</code>, insert OpenCV path as your installation path. In my case, I added and able to work with it. </p>
+
+<pre><code>C:\Program Files (x86)\IntelSWTools\openvino\opencv\bin
+</code></pre>
+
+<p>You also need to check for preferable backend and target to pick inference backend and target hardware.</p>
+
+<p>see following API references: </p>
+
+<ul>
+<li><a href=""https://docs.opencv.org/master/d6/d0f/group__dnn.html"" rel=""nofollow noreferrer"">https://docs.opencv.org/master/d6/d0f/group__dnn.html</a> </li>
+<li><a href=""https://docs.opencv.org/3.4/db/d30/classcv_1_1dnn_1_1Net.html#a7f767df11386d39374db49cd8df8f59e"" rel=""nofollow noreferrer"">https://docs.opencv.org/3.4/db/d30/classcv_1_1dnn_1_1Net.html#a7f767df11386d39374db49cd8df8f59e</a> </li>
+<li><a href=""https://docs.opencv.org/3.4/db/d30/classcv_1_1dnn_1_1Net.html#a9dddbefbc7f3defbe3eeb5dc3d3483f4"" rel=""nofollow noreferrer"">https://docs.opencv.org/3.4/db/d30/classcv_1_1dnn_1_1Net.html#a9dddbefbc7f3defbe3eeb5dc3d3483f4</a></li>
+</ul>
+","6440","2","3","<python><opencv><cmake><openvino>"
+"57007007","OpenVINO: How to build OpenCV with Inference Engine to enable loading models from Model Optimizer","2019-07-12 12:26:19","<p>I installed OpenVINO and want to run the following code on windows 10. </p>
+
+<pre><code>import numpy as np
+import cv2
+import sys
+
+from get_face_id import face_id_getter
+from check import check
+from win10toast import ToastNotifier 
+
+FP = 32
+
+targetId = 0
+toaster = None
+
+if '-use_notifications' in sys.argv:
+    toaster = ToastNotifier() 
+
+if len(sys.argv) &gt; 1 and '-m' in sys.argv:
+    FP =  16
+    targetId = cv2.dnn.DNN_TARGET_MYRIAD
+
+
+
+cap = cv2.VideoCapture(0)
+
+getter = None
+
+if '-get_face_id' in sys.argv:
+    getter = face_id_getter()
+
+weights = 'face-detection-adas-0001/FP{}/face-detection-adas-0001.bin'.format(FP)
+config = 'face-detection-adas-0001/FP{}/face-detection-adas-0001.xml'.format(FP)
+
+weights_emotions, config_emotions, emotions = None, None, None
+
+
+
+if len(sys.argv) &gt; 1 and '-use_emotions' in sys.argv:
+    weights_emotions = 'emotions-recognition-retail-0003/FP{}/emotions-recognition-retail-0003.bin'.format(FP)
+    config_emotions = 'emotions-recognition-retail-0003/FP{}/emotions-recognition-retail-0003.xml'.format(FP)
+framework = 'DLDT'
+
+model = cv2.dnn.readNet(weights, config, framework)
+model.setPreferableTarget(targetId=targetId)
+
+if len(sys.argv) &gt; 1 and '-use_emotions' in sys.argv:
+    emotions = cv2.dnn.readNet(weights_emotions, config_emotions, framework)
+    emotions.setPreferableTarget(targetId=targetId)
+
+emotions_decode = ('neutral', 'happy', 'sad', 'surprise', 'anger')
+
+names = [""Plotnikov Egor"", ""Vainberg Roman"", ""Sataev Emil"", ""Unknown person""]
+
+emotion_text = None
+
+while(True):
+    ret, frame = cap.read()
+
+    blob = cv2.dnn.blobFromImage(frame, size=(672, 384), crop=False)
+
+    have_nots = False
+
+    model.setInput(blob)
+    ans = model.forward()
+    for i in range(0, 200):
+        x_min, y_min, x_max, y_max = np.array(ans[0, 0, i, 3:7]) * np.array([640, 480, 640, 480])
+        if ans[0, 0, i, 2] &gt; 0.5:
+            cv2.rectangle(frame, (int(x_min), int(y_min)), (int(x_max), int(y_max)), ( 0, 255, 255))
+
+            if len(sys.argv) &gt; 1 and '-use_emotions' in sys.argv:
+                blob_emotions = cv2.dnn.blobFromImage(frame[int(y_min):int(y_max), int(x_min):int(x_max)], size=(64, 64), crop=False)
+                emotions.setInput(blob_emotions)
+                ans_emotions = emotions.forward()[0, : , 0 , 0]
+                ans_emotions = list(map(lambda x: 1 if x &gt; 0.5 else 0, ans_emotions))
+                _t = ''.join(list(map(str,ans_emotions))).find('1')
+                if _t == -1:
+                    _t = 0
+                emotion_text = emotions_decode[_t]
+
+            if '-get_face_id' in sys.argv:
+                _ans = getter.get_answer(frame[int(y_min):int(y_max), int(x_min):int(x_max)])
+
+                t = check('labels.txt', _ans)
+                #print(names[t])
+                font = cv2.FONT_HERSHEY_SIMPLEX 
+                cv2.putText(frame,names[t],(int(x_min), int(y_min)), font, 1,(255,255,255),2,cv2.LINE_AA)
+                if emotion_text != None:
+                    cv2.putText(frame,emotion_text,(int(x_min), int(y_max)), font, 1,(255,255,255),2,cv2.LINE_AA)
+
+            if '-use_notifications' in sys.argv and not have_nots:
+                toaster.show_toast(""Welcome, "" + names[t],"""")
+                have_nots = True
+
+    cv2.imshow('frame',frame)
+
+    if cv2.waitKey(1) &amp; 0xFF == ord('q'):
+        break
+
+
+cap.release()
+cv2.destroyAllWindows() 
+</code></pre>
+
+<p>I want to run a pre-trained OpenVINO model, but get the error:</p>
+
+<pre><code>v\modules\dnn\src\dnn.cpp:2670: error: (-2:Unspecified error) Build OpenCV with Inference Engine to enable loading models from Model Optimizer. in function 'cv::dnn::dnn4_v20190122::Net::readFromModelOptimizer'
+</code></pre>
+
+<p>I need to build OpenCV with Inference Engine. I'm not experienced in programming and don't know what this means.</p>
+
+<p>When I try this:
+<a href=""https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend"" rel=""nofollow noreferrer"">https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend</a></p>
+
+<p>and try</p>
+
+<pre><code>cmake \
+  -DWITH_INF_ENGINE=ON \
+  -DENABLE_CXX11=ON \
+  ...
+</code></pre>
+
+<p>in the C:\Program Files (x86)\IntelSWTools\openvino_2019.1.148\opencv\samples
+it gives an error saying: </p>
+
+<pre><code>CMake Error: The source directory ""C:/Program Files (x86)/IntelSWTools/openvino_2019.1.148/opencv/samples/..."" does not appear to contain CMakeLists.txt.
+</code></pre>
+
+<p>even though there is a CMakeLists.txt in that folder.</p>
+
+<p>Can someone please help me?</p>
+","<p>For me, the solution was to remove the OpenCV Python libraries and install <em>opencv-python-inference-engine</em></p>
+
+<pre><code>pip3 uninstall opencv-python
+pip3 uninstall opencv-contrib-python
+pip3 install opencv-python-inference-engine
+</code></pre>
+","6440","2","3","<python><opencv><cmake><openvino>"
+"58264381","python ImportError Openvino by script and by shell","2019-10-07 06:23:26","<p>When I run python script by command <code>sudo python script.py</code> I get error in the line</p>
+
+<pre><code>from openvino.inference_engine import IENetwork, IECore
+</code></pre>
+
+<p>The error is</p>
+
+<pre><code>ImportError: No module named openvino.inference_engine
+</code></pre>
+
+<p>But When I open the python shell and run </p>
+
+<pre><code>from openvino.inference_engine import IENetwork, IECore
+</code></pre>
+
+<p>I don't get this error.</p>
+
+<p>What is the reason for the difference and how to fix this error?</p>
+","<p>The issue you are facing is because the inference engine path is not found in the path variable. In openvino the path variables such as the path to openvino inference engine are setup for user by running the setupvars.sh shell script in the below path:</p>
+
+<p>intel/openvino_2019.1.144/bin/setupvars.sh</p>
+
+<p>The path variables are set specific to the user and are not present in the path variable for the sudo user. So when you run the python script using ""<code>sudo python script.py</code>"" you get the module not found error as the path variables for openvino are not rightly set for sudo.</p>
+
+<p>If you open the setupvars.sh you can see all path variable are set without sudo like the below example</p>
+
+<pre><code>export PATH=~/intel/openvino_2019.2.242/python/python3.7:$PATH
+</code></pre>
+
+<p>**</p>
+
+<h2>Resolution</h2>
+
+<p>**
+To resolve your error you can use any of the two below alternatives:</p>
+
+<p>1)You can run ""<code>python script.py</code>"" which could give you your expected result.</p>
+
+<p>2)If you want to get this packages in ""<code>sudo python script.py</code>"" you must add openvino path to the sudo path. This can be done by editing the setupvars.sh file by changing the commands used to set paths as in the below example</p>
+
+<p>eg:</p>
+
+<pre><code>export PATH=~/intel/openvino_2019.2.242/python/python3.7:$PATH
+</code></pre>
+
+<p>should be replaced with</p>
+
+<pre><code>sudo PATH=~/intel/openvino_2019.2.242/python/python3.7:$PATH
+</code></pre>
+","5571","4","1","<python><import><sudo><openvino>"
+"56754574","Channels first vs Channels last - what do these mean?","2019-06-25 12:53:54","<p><a href=""https://software.intel.com/en-us/forums/computer-vision/topic/785538"" rel=""nofollow noreferrer"">https://software.intel.com/en-us/forums/computer-vision/topic/785538</a></p>
+
+<p>""The problem has been resolved. It's because the model I use uses channels_first as default for GPU training, while OPENVINO requires channels_last for TF models.""</p>
+
+<p>What do these mean?</p>
+
+<p>How can I change them? </p>
+
+<p>I cannot find any further references to this on the net.</p>
+","<p>Channels first means that in a specific tensor (consider a photo), you would have <code>(Number_Of_Channels, Height , Width)</code>.</p>
+<p>Channels last means channels are on the last position in a tensor(n-dimensional array).</p>
+<p>Examples:</p>
+<pre><code>    (3,360,720) --- Channels first
+
+    (360,720,3) --- Channels last
+</code></pre>
+<p>where 3 comes from RGB (coloured image).</p>
+<p>TensorFlow has by default channels last setting in the configuration.</p>
+<p>The issue comes from the fact that some obsolete now frameworks(such as <code>Theano</code>) had a channels-first approach; porting was a problem particularly for newbies.</p>
+<p>The solution to your problem would be to re-train your model in &quot;Channels_Last&quot; format.</p>
+","5242","2","3","<tensorflow><neural-network><deep-learning><conv-neural-network><openvino>"
+"56754574","Channels first vs Channels last - what do these mean?","2019-06-25 12:53:54","<p><a href=""https://software.intel.com/en-us/forums/computer-vision/topic/785538"" rel=""nofollow noreferrer"">https://software.intel.com/en-us/forums/computer-vision/topic/785538</a></p>
+
+<p>""The problem has been resolved. It's because the model I use uses channels_first as default for GPU training, while OPENVINO requires channels_last for TF models.""</p>
+
+<p>What do these mean?</p>
+
+<p>How can I change them? </p>
+
+<p>I cannot find any further references to this on the net.</p>
+","<p>You can convert TF model with NCHW layout to IR by using --disable_nhwc_to_nchw with Model Optimizer.  </p>
+","5242","2","3","<tensorflow><neural-network><deep-learning><conv-neural-network><openvino>"
+"56754574","Channels first vs Channels last - what do these mean?","2019-06-25 12:53:54","<p><a href=""https://software.intel.com/en-us/forums/computer-vision/topic/785538"" rel=""nofollow noreferrer"">https://software.intel.com/en-us/forums/computer-vision/topic/785538</a></p>
+
+<p>""The problem has been resolved. It's because the model I use uses channels_first as default for GPU training, while OPENVINO requires channels_last for TF models.""</p>
+
+<p>What do these mean?</p>
+
+<p>How can I change them? </p>
+
+<p>I cannot find any further references to this on the net.</p>
+","<p>NCHW - channel first<br>
+NHWC - channel last</p>
+
+<p>N:batch_size, C:no.of.channels, H:input_img_height, W:input_img_width  </p>
+
+<p>by default MKLDNN-plugin uses NCHW data layout. </p>
+","5242","2","3","<tensorflow><neural-network><deep-learning><conv-neural-network><openvino>"
+"57423838","Whats the right way of using openCV with openVINO?","2019-08-09 05:18:48","<p>Dislcaimer: I have never used openCV or openVINO or for the fact anything even close to ML before. However I've been slamming my head studying neural-networks(reading material online) because I've to work with intel's openVINO on an edge device.
+Here's what the official documentation says about using openCV with openVINO(using openVINO's inference engine with openCV). </p>
+
+<p>->Optimize the pretrained model with openVINO's model optimizer(creating the IR file pair)
+use these IR files with</p>
+
+<pre><code> openCV's dnn.readnet() //this is where the inference engine gets set? 
+</code></pre>
+
+<p><a href=""https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_raspbian.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_raspbian.html</a></p>
+
+<p>Tried digging more and found a third party reference. Here a difference approach is taken. </p>
+
+<p>->Intermediatte files (bin/xml are not created. Instead caffe model file is used)</p>
+
+<p>->the inference engine is  defined explicitly with the following line </p>
+
+<pre><code>net.setPreferableBackend(cv2.dnn.DNN_BACKEND_INFERENCE_ENGINE)
+</code></pre>
+
+<p><a href=""https://www.learnopencv.com/using-openvino-with-opencv/"" rel=""nofollow noreferrer"">https://www.learnopencv.com/using-openvino-with-opencv/</a></p>
+
+<p>Now I know to utilize openCV we have to use it's inference engine with pretrained models. I want to know which of the two approach is the correct(or preferred) one, and if rather I'm missing out no something. </p>
+","<p>You can get started using OpenVino from: <a href=""https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_windows.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_windows.html</a></p>
+
+<p>You would require a set of pre-requsites to run your sample. OpenCV is your Computer Vision package which can used for Image processing.</p>
+
+<p>Openvino inference requires you to convert any of your trained models(.caffemodel,.pb,etc.) to Intermediate representations(.xml,.bin) files.</p>
+
+<p>For a better understanding and sample demos on OpenVino, watch the videos/subscribe to the OpenVino Youtube channel: <a href=""https://www.youtube.com/channel/UCkN8KINLvP1rMkL4trkNgTg"" rel=""nofollow noreferrer"">https://www.youtube.com/channel/UCkN8KINLvP1rMkL4trkNgTg</a></p>
+","3956","0","3","<opencv><neural-network><conv-neural-network><openvino>"
+"57423838","Whats the right way of using openCV with openVINO?","2019-08-09 05:18:48","<p>Dislcaimer: I have never used openCV or openVINO or for the fact anything even close to ML before. However I've been slamming my head studying neural-networks(reading material online) because I've to work with intel's openVINO on an edge device.
+Here's what the official documentation says about using openCV with openVINO(using openVINO's inference engine with openCV). </p>
+
+<p>->Optimize the pretrained model with openVINO's model optimizer(creating the IR file pair)
+use these IR files with</p>
+
+<pre><code> openCV's dnn.readnet() //this is where the inference engine gets set? 
+</code></pre>
+
+<p><a href=""https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_raspbian.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_raspbian.html</a></p>
+
+<p>Tried digging more and found a third party reference. Here a difference approach is taken. </p>
+
+<p>->Intermediatte files (bin/xml are not created. Instead caffe model file is used)</p>
+
+<p>->the inference engine is  defined explicitly with the following line </p>
+
+<pre><code>net.setPreferableBackend(cv2.dnn.DNN_BACKEND_INFERENCE_ENGINE)
+</code></pre>
+
+<p><a href=""https://www.learnopencv.com/using-openvino-with-opencv/"" rel=""nofollow noreferrer"">https://www.learnopencv.com/using-openvino-with-opencv/</a></p>
+
+<p>Now I know to utilize openCV we have to use it's inference engine with pretrained models. I want to know which of the two approach is the correct(or preferred) one, and if rather I'm missing out no something. </p>
+","<p>If the topology that you are using is supported by OpenVino,the best way to use is the opencv that comes with openvino. For that you need to </p>
+
+<p>1.Initialize the openvino environment by running the setupvars.bat in your openvino path(C:\Program Files (x86)\IntelSWTools\openvino\bin)</p>
+
+<p>2.Generate the IR file (xml&amp;bin)for your model using model optimizer.</p>
+
+<p>3.Run using inference engine samples in the path /inference_engine_samples_build/</p>
+
+<p>If the topology is not supported, then you can go for the other procedure that you mentioned.</p>
+","3956","0","3","<opencv><neural-network><conv-neural-network><openvino>"
+"57423838","Whats the right way of using openCV with openVINO?","2019-08-09 05:18:48","<p>Dislcaimer: I have never used openCV or openVINO or for the fact anything even close to ML before. However I've been slamming my head studying neural-networks(reading material online) because I've to work with intel's openVINO on an edge device.
+Here's what the official documentation says about using openCV with openVINO(using openVINO's inference engine with openCV). </p>
+
+<p>->Optimize the pretrained model with openVINO's model optimizer(creating the IR file pair)
+use these IR files with</p>
+
+<pre><code> openCV's dnn.readnet() //this is where the inference engine gets set? 
+</code></pre>
+
+<p><a href=""https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_raspbian.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_raspbian.html</a></p>
+
+<p>Tried digging more and found a third party reference. Here a difference approach is taken. </p>
+
+<p>->Intermediatte files (bin/xml are not created. Instead caffe model file is used)</p>
+
+<p>->the inference engine is  defined explicitly with the following line </p>
+
+<pre><code>net.setPreferableBackend(cv2.dnn.DNN_BACKEND_INFERENCE_ENGINE)
+</code></pre>
+
+<p><a href=""https://www.learnopencv.com/using-openvino-with-opencv/"" rel=""nofollow noreferrer"">https://www.learnopencv.com/using-openvino-with-opencv/</a></p>
+
+<p>Now I know to utilize openCV we have to use it's inference engine with pretrained models. I want to know which of the two approach is the correct(or preferred) one, and if rather I'm missing out no something. </p>
+","<p>The most common issues I ran into:</p>
+<ul>
+<li>setupvars.bat must be run within the same terminal, or use os.environ[&quot;varname&quot;] = varvalue</li>
+<li>OpenCV needs to be built with support for the inference engines (ie DLDT).  There are pre-built binaries here: <a href=""https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend"" rel=""nofollow noreferrer"">https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend</a></li>
+<li>Target inference engine: net.setPreferableBackend(cv2.dnn.DNN_BACKEND_INFERENCE_ENGINE)</li>
+<li>Target NCS2: net.setPreferableTarget(cv2.dnn.DNN_TARGET_MYRIAD)</li>
+</ul>
+<p>The OpenCV pre-built binary located in the OpenVino directory already has IE support and is also an option.</p>
+<p>Note that the Neural Compute Stick 2 AKA NCS2 (OpenVino IE/VPU/MYRIAD) requires FP16 model formats (float16).  Also try to keep you image in this format to avoid conversion penalties.  You can input images as any of these formats though: FP32, FP16, U8</p>
+<p>I found this guide helpful: <a href=""https://learnopencv.com/using-openvino-with-opencv/"" rel=""nofollow noreferrer"">https://learnopencv.com/using-openvino-with-opencv/</a></p>
+<p>Here's an example targetting the NCS2 from <a href=""https://medium.com/sclable/intel-openvino-with-opencv-f5ad03363a38"" rel=""nofollow noreferrer"">https://medium.com/sclable/intel-openvino-with-opencv-f5ad03363a38</a>:</p>
+<pre><code># Load the model.
+net = cv2.dnn.readNet(ARCH_FPATH, MODEL_FPATH)
+
+# Specify target device.
+net.setPreferableBackend(cv2.dnn.DNN_BACKEND_INFERENCE_ENGINE)
+net.setPreferableTarget(cv2.dnn.DNN_TARGET_MYRIAD) # NCS 2
+
+# Read an image.
+print(&quot;Processing input image...&quot;)
+img = cv2.imread(IMG_FPATH)
+if img is None:
+    raise Exception(f'Image not found here: {IMG_FPATH}')
+
+# Prepare input blob and perform inference
+blob = cv2.dnn.blobFromImage(img, size=(672, 384), ddepth=cv2.CV_8U)
+net.setInput(blob)
+out = net.forward()
+
+# Draw detected faces
+for detect in out.reshape(-1, 7):
+    conf = float(detect[2])
+    xmin = int(detect[3] * frame.shape[1])
+    ymin = int(detect[4] * frame.shape[0])
+    xmax = int(detect[5] * frame.shape[1])
+    ymax = int(detect[6] * frame.shape[0])
+    
+    if conf &gt; CONF_THRESH:
+        cv2.rectangle(img, (xmin, ymin), (xmax, ymax), color=(0, 255, 0))
+</code></pre>
+<p>There are more samples here (jupyter notebook/python): <a href=""https://github.com/sclable/openvino_opencv"" rel=""nofollow noreferrer"">https://github.com/sclable/openvino_opencv</a></p>
+","3956","0","3","<opencv><neural-network><conv-neural-network><openvino>"
+"54772173","Using Openvino's OpenCV build on Anaconda environment","2019-02-19 17:50:25","<p>I have recently installed the latest OpenVINO release (2018 R5 0.1) for Windows 10 which, if I understood correctly, comes with a fully built OpenCV. Many tutorials show the use of that OpenCV but I failed to make it work on my Anaconda environment (with Python 3.6).</p>
+<hr />
+<p>Running the environement setup <code>C:\Intel\cvsdk\bin\setupvars.bat</code> script I get the following output:</p>
+<blockquote>
+<p>Commande ECHO désactivée.</p>
+<p>PYTHONPATH=C:\Intel\computer_vision_sdk_2018.5.456\python\python3.6;C:\Program Files\Python36;</p>
+<p>[setupvars.bat] OpenVINO environment initialized</p>
+</blockquote>
+<p>In my conda env, if I have no opencv package installed, I get the error:</p>
+<p><code>ModuleNotFoundError: No module named cv2</code></p>
+<p>And if I install one with <code>conda install py-opencv</code> (or <code>opencv</code>), I get this:</p>
+<p><code>cv2.error: OpenCV(3.4.2) [...] Build OpenCV with Inference Engine to enable loading models from Model Optimizer</code></p>
+<p>Installing with pip (<code>pip install opencv-python</code>) while on the anaconda environment also doesn't work:</p>
+<p><code>cv2.error: OpenCV(4.0.0) [...] Build OpenCV with Inference Engine to enable loading models from Model Optimizer</code></p>
+<hr />
+<p>For clarification, I have successfully built the opencv examples with CMake and can run the executables. Here is the output of one of their sample programs:</p>
+<pre><code>(OpenVino) C:\Intel\computer_vision_sdk_2018.5.456\opencv\build\Debug&gt;openvino_sample_opencv_version.exe
+</code></pre>
+<blockquote>
+<p>Welcome to OpenCV 4.0.1-openvino</p>
+</blockquote>
+<p>Clearly, that OpenCV is usable somehow, I just can't find how to use it in my conda environment from a python script.</p>
+","<p>Append OpenVINO python path in the beginning of your python code as shown below:</p>
+
+<pre><code>import sys
+sys.path.append(""C:\Intel\computer_vision_sdk_&lt;version_number&gt;\python\python3.6"") 
+</code></pre>
+
+<p>For eg:</p>
+
+<pre><code>sys.path.append(""C:\Intel\computer_vision_sdk_2018.5.456\python\python3.6"") 
+</code></pre>
+","3099","1","4","<python><opencv><anaconda><openvino>"
+"54772173","Using Openvino's OpenCV build on Anaconda environment","2019-02-19 17:50:25","<p>I have recently installed the latest OpenVINO release (2018 R5 0.1) for Windows 10 which, if I understood correctly, comes with a fully built OpenCV. Many tutorials show the use of that OpenCV but I failed to make it work on my Anaconda environment (with Python 3.6).</p>
+<hr />
+<p>Running the environement setup <code>C:\Intel\cvsdk\bin\setupvars.bat</code> script I get the following output:</p>
+<blockquote>
+<p>Commande ECHO désactivée.</p>
+<p>PYTHONPATH=C:\Intel\computer_vision_sdk_2018.5.456\python\python3.6;C:\Program Files\Python36;</p>
+<p>[setupvars.bat] OpenVINO environment initialized</p>
+</blockquote>
+<p>In my conda env, if I have no opencv package installed, I get the error:</p>
+<p><code>ModuleNotFoundError: No module named cv2</code></p>
+<p>And if I install one with <code>conda install py-opencv</code> (or <code>opencv</code>), I get this:</p>
+<p><code>cv2.error: OpenCV(3.4.2) [...] Build OpenCV with Inference Engine to enable loading models from Model Optimizer</code></p>
+<p>Installing with pip (<code>pip install opencv-python</code>) while on the anaconda environment also doesn't work:</p>
+<p><code>cv2.error: OpenCV(4.0.0) [...] Build OpenCV with Inference Engine to enable loading models from Model Optimizer</code></p>
+<hr />
+<p>For clarification, I have successfully built the opencv examples with CMake and can run the executables. Here is the output of one of their sample programs:</p>
+<pre><code>(OpenVino) C:\Intel\computer_vision_sdk_2018.5.456\opencv\build\Debug&gt;openvino_sample_opencv_version.exe
+</code></pre>
+<blockquote>
+<p>Welcome to OpenCV 4.0.1-openvino</p>
+</blockquote>
+<p>Clearly, that OpenCV is usable somehow, I just can't find how to use it in my conda environment from a python script.</p>
+","<p>you need to run</p>
+
+<pre><code>C:\Intel\cvsdk\bin\setupvars.bat
+</code></pre>
+
+<p>every time you activate the enviroment</p>
+","3099","1","4","<python><opencv><anaconda><openvino>"
+"54772173","Using Openvino's OpenCV build on Anaconda environment","2019-02-19 17:50:25","<p>I have recently installed the latest OpenVINO release (2018 R5 0.1) for Windows 10 which, if I understood correctly, comes with a fully built OpenCV. Many tutorials show the use of that OpenCV but I failed to make it work on my Anaconda environment (with Python 3.6).</p>
+<hr />
+<p>Running the environement setup <code>C:\Intel\cvsdk\bin\setupvars.bat</code> script I get the following output:</p>
+<blockquote>
+<p>Commande ECHO désactivée.</p>
+<p>PYTHONPATH=C:\Intel\computer_vision_sdk_2018.5.456\python\python3.6;C:\Program Files\Python36;</p>
+<p>[setupvars.bat] OpenVINO environment initialized</p>
+</blockquote>
+<p>In my conda env, if I have no opencv package installed, I get the error:</p>
+<p><code>ModuleNotFoundError: No module named cv2</code></p>
+<p>And if I install one with <code>conda install py-opencv</code> (or <code>opencv</code>), I get this:</p>
+<p><code>cv2.error: OpenCV(3.4.2) [...] Build OpenCV with Inference Engine to enable loading models from Model Optimizer</code></p>
+<p>Installing with pip (<code>pip install opencv-python</code>) while on the anaconda environment also doesn't work:</p>
+<p><code>cv2.error: OpenCV(4.0.0) [...] Build OpenCV with Inference Engine to enable loading models from Model Optimizer</code></p>
+<hr />
+<p>For clarification, I have successfully built the opencv examples with CMake and can run the executables. Here is the output of one of their sample programs:</p>
+<pre><code>(OpenVino) C:\Intel\computer_vision_sdk_2018.5.456\opencv\build\Debug&gt;openvino_sample_opencv_version.exe
+</code></pre>
+<blockquote>
+<p>Welcome to OpenCV 4.0.1-openvino</p>
+</blockquote>
+<p>Clearly, that OpenCV is usable somehow, I just can't find how to use it in my conda environment from a python script.</p>
+","<p>For a clean installation of openVINO &amp; anaconda should be enough to run the environment setup, as mentioned <a href=""https://software.intel.com/en-us/forums/intel-distribution-of-openvino-toolkit/topic/802287#comment-1938106"" rel=""nofollow noreferrer"">here</a>, for Jupyter notebooks however could be better to run it explicitly at the beginning with:</p>
+
+<p>PC</p>
+
+<pre><code>!C:\Intel\...\bin\setupvars.bat
+</code></pre>
+
+<p>Mac</p>
+
+<pre><code>!source /opt/intel/openvino/bin/setupvars.sh
+</code></pre>
+","3099","1","4","<python><opencv><anaconda><openvino>"
+"54772173","Using Openvino's OpenCV build on Anaconda environment","2019-02-19 17:50:25","<p>I have recently installed the latest OpenVINO release (2018 R5 0.1) for Windows 10 which, if I understood correctly, comes with a fully built OpenCV. Many tutorials show the use of that OpenCV but I failed to make it work on my Anaconda environment (with Python 3.6).</p>
+<hr />
+<p>Running the environement setup <code>C:\Intel\cvsdk\bin\setupvars.bat</code> script I get the following output:</p>
+<blockquote>
+<p>Commande ECHO désactivée.</p>
+<p>PYTHONPATH=C:\Intel\computer_vision_sdk_2018.5.456\python\python3.6;C:\Program Files\Python36;</p>
+<p>[setupvars.bat] OpenVINO environment initialized</p>
+</blockquote>
+<p>In my conda env, if I have no opencv package installed, I get the error:</p>
+<p><code>ModuleNotFoundError: No module named cv2</code></p>
+<p>And if I install one with <code>conda install py-opencv</code> (or <code>opencv</code>), I get this:</p>
+<p><code>cv2.error: OpenCV(3.4.2) [...] Build OpenCV with Inference Engine to enable loading models from Model Optimizer</code></p>
+<p>Installing with pip (<code>pip install opencv-python</code>) while on the anaconda environment also doesn't work:</p>
+<p><code>cv2.error: OpenCV(4.0.0) [...] Build OpenCV with Inference Engine to enable loading models from Model Optimizer</code></p>
+<hr />
+<p>For clarification, I have successfully built the opencv examples with CMake and can run the executables. Here is the output of one of their sample programs:</p>
+<pre><code>(OpenVino) C:\Intel\computer_vision_sdk_2018.5.456\opencv\build\Debug&gt;openvino_sample_opencv_version.exe
+</code></pre>
+<blockquote>
+<p>Welcome to OpenCV 4.0.1-openvino</p>
+</blockquote>
+<p>Clearly, that OpenCV is usable somehow, I just can't find how to use it in my conda environment from a python script.</p>
+","<p>I solved the problem by using windows command prompt rather than power shell, which is recommended by the official open-vino doc.</p>
+","3099","1","4","<python><opencv><anaconda><openvino>"
+"54608215","When I try to compile OpenCv with inference engine enabled, I am getting an error","2019-02-09 16:31:34","<p>If I try to build OpenCV 4.0.0 with inferenca Engineen enabled, I am getting this error:</p>
+<pre><code>1&gt;------ Build started: Project: opencv_dnn, Configuration: Release x64 ------
+1&gt;dnn.cpp
+1&gt;C:\local\opencv-4.0.0\modules\dnn\src\dnn.cpp(1595): error C2259: 'cv::dnn::InfEngineBackendNet': cannot instantiate abstract class
+1&gt;C:\local\opencv-4.0.0\modules\dnn\src\dnn.cpp(1595): note: due to following members:
+1&gt;C:\local\opencv-4.0.0\modules\dnn\src\dnn.cpp(1595): note: 'InferenceEngine::StatusCode InferenceEngine::ICNNNetwork::serialize(const std::string &amp;,const std::string &amp;,InferenceEngine::ResponseDesc *) noexcept const': is abstract
+1&gt;C:\local\Intel\computer_vision_sdk_2018.5.445\deployment_tools\inference_engine\include\ie_icnn_network.hpp(190): note: see declaration of 'InferenceEngine::ICNNNetwork::serialize'
+1&gt;C:\local\opencv-4.0.0\modules\dnn\src\dnn.cpp(2556): error C2259: 'cv::dnn::InfEngineBackendNet': cannot instantiate abstract class
+1&gt;C:\local\opencv-4.0.0\modules\dnn\src\dnn.cpp(2556): note: due to following members:
+1&gt;C:\local\opencv-4.0.0\modules\dnn\src\dnn.cpp(2556): note: 'InferenceEngine::StatusCode InferenceEngine::ICNNNetwork::serialize(const std::string &amp;,const std::string &amp;,InferenceEngine::ResponseDesc *) noexcept const': is abstract
+1&gt;C:\local\Intel\computer_vision_sdk_2018.5.445\deployment_tools\inference_engine\include\ie_icnn_network.hpp(190): note: see declaration of 'InferenceEngine::ICNNNetwork::serialize'
+1&gt;Done building project &quot;opencv_dnn.vcxproj&quot; -- FAILED.
+</code></pre>
+<p>Why I am getting this error?</p>
+<h1>Edit</h1>
+<p>Cmake output is:</p>
+<pre><code>Selecting Windows SDK version 10.0.17763.0 to target Windows 10.0.17134.
+AVX_512F is not supported by C++ compiler
+AVX512_SKX is not supported by C++ compiler
+Dispatch optimization AVX512_SKX is not available, skipped
+libjpeg-turbo: VERSION = 1.5.3, BUILD = opencv-4.0.0-libjpeg-turbo
+Looking for Mfapi.h
+Looking for Mfapi.h - found
+found Intel IPP (ICV version): 2019.0.0 [2019.0.0 Gold]
+at: C:/local/opencv-build/3rdparty/ippicv/ippicv_win/icv
+found Intel IPP Integration Wrappers sources: 2019.0.0
+at: C:/local/opencv-build/3rdparty/ippicv/ippicv_win/iw
+Could not find OpenBLAS include. Turning OpenBLAS_FOUND off
+Could not find OpenBLAS lib. Turning OpenBLAS_FOUND off
+Could NOT find BLAS (missing: BLAS_LIBRARIES) 
+LAPACK requires BLAS
+A library with LAPACK API not found. Please specify library location.
+Could NOT find JNI (missing: JAVA_AWT_LIBRARY JAVA_JVM_LIBRARY JAVA_INCLUDE_PATH JAVA_INCLUDE_PATH2 JAVA_AWT_INCLUDE_PATH) 
+Detected InferenceEngine: cmake package
+VTK is not found. Please set -DVTK_DIR in CMake to VTK build directory, or to VTK install subdirectory with VTKConfig.cmake file
+OpenCV Python: during development append to PYTHONPATH: C:/local/opencv-build/python_loader
+Excluding from source files list: &lt;BUILD&gt;/modules/dnn/layers/layers_common.avx512_skx.cpp
+
+General configuration for OpenCV 4.0.0 =====================================
+  Version control:               unknown
+
+  Platform:
+    Timestamp:                   2019-02-09T13:06:47Z
+    Host:                        Windows 10.0.17134 AMD64
+    CMake:                       3.13.0-rc3
+    CMake generator:             Visual Studio 15 2017 Win64
+    CMake build tool:            C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe
+    MSVC:                        1916
+
+  CPU/HW features:
+    Baseline:                    SSE SSE2 SSE3
+      requested:                 SSE3
+    Dispatched code generation:  SSE4_1 SSE4_2 FP16 AVX AVX2
+      requested:                 SSE4_1 SSE4_2 AVX FP16 AVX2 AVX512_SKX
+      SSE4_1 (7 files):          + SSSE3 SSE4_1
+      SSE4_2 (2 files):          + SSSE3 SSE4_1 POPCNT SSE4_2
+      FP16 (1 files):            + SSSE3 SSE4_1 POPCNT SSE4_2 FP16 AVX
+      AVX (5 files):             + SSSE3 SSE4_1 POPCNT SSE4_2 AVX
+      AVX2 (13 files):           + SSSE3 SSE4_1 POPCNT SSE4_2 FP16 FMA3 AVX AVX2
+
+  C/C++:
+    Built as dynamic libs?:      NO
+    C++ Compiler:                C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.16.27023/bin/Hostx86/x64/cl.exe  (ver 19.16.27026.1)
+    C++ flags (Release):         /DWIN32 /D_WINDOWS /W4 /GR  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi      /EHa /wd4127 /wd4251 /wd4324 /wd4275 /wd4512 /wd4589 /MP4   /MT /O2 /Ob2 /DNDEBUG 
+    C++ flags (Debug):           /DWIN32 /D_WINDOWS /W4 /GR  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi      /EHa /wd4127 /wd4251 /wd4324 /wd4275 /wd4512 /wd4589 /MP4   /MTd /Zi /Ob0 /Od /RTC1 
+    C Compiler:                  C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.16.27023/bin/Hostx86/x64/cl.exe
+    C flags (Release):           /DWIN32 /D_WINDOWS /W3  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi        /MP4    /MT /O2 /Ob2 /DNDEBUG 
+    C flags (Debug):             /DWIN32 /D_WINDOWS /W3  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi        /MP4  /MTd /Zi /Ob0 /Od /RTC1 
+    Linker flags (Release):      /machine:x64  /NODEFAULTLIB:atlthunk.lib /INCREMENTAL:NO  /NODEFAULTLIB:libcmtd.lib /NODEFAULTLIB:libcpmtd.lib /NODEFAULTLIB:msvcrtd.lib
+    Linker flags (Debug):        /machine:x64  /NODEFAULTLIB:atlthunk.lib /debug /INCREMENTAL  /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcpmt.lib /NODEFAULTLIB:msvcrt.lib
+    ccache:                      NO
+    Precompiled headers:         YES
+    Extra dependencies:          IE::inference_engine ade comctl32 gdi32 ole32 setupapi ws2_32
+    3rdparty dependencies:       ittnotify libprotobuf zlib libjpeg-turbo libwebp libpng libtiff libjasper IlmImf quirc ippiw ippicv
+
+  OpenCV modules:
+    To be built:                 calib3d core dnn features2d flann gapi highgui imgcodecs imgproc java_bindings_generator ml objdetect photo python3 python_bindings_generator stitching ts video videoio
+    Disabled:                    world
+    Disabled by dependency:      -
+    Unavailable:                 java js python2
+    Applications:                tests perf_tests apps
+    Documentation:               NO
+    Non-free algorithms:         NO
+
+  Windows RT support:            NO
+
+  GUI: 
+    Win32 UI:                    YES
+    VTK support:                 NO
+
+  Media I/O: 
+    ZLib:                        build (ver 1.2.11)
+    JPEG:                        build-libjpeg-turbo (ver 1.5.3-62)
+    WEBP:                        build (ver encoder: 0x020e)
+    PNG:                         build (ver 1.6.35)
+    TIFF:                        build (ver 42 - 4.0.9)
+    JPEG 2000:                   build (ver 1.900.1)
+    OpenEXR:                     build (ver 1.7.1)
+    HDR:                         YES
+    SUNRASTER:                   YES
+    PXM:                         YES
+    PFM:                         YES
+
+  Video I/O:
+    DC1394:                      NO
+    FFMPEG:                      YES (prebuilt binaries)
+      avcodec:                   YES (ver 58.35.100)
+      avformat:                  YES (ver 58.20.100)
+      avutil:                    YES (ver 56.22.100)
+      swscale:                   YES (ver 5.3.100)
+      avresample:                YES (ver 4.0.0)
+    GStreamer:                   NO
+    DirectShow:                  YES
+    Media Foundation:            YES
+
+  Parallel framework:            Concurrency
+
+  Trace:                         YES (with Intel ITT)
+
+  Other third-party libraries:
+    Intel IPP:                   2019.0.0 Gold [2019.0.0]
+           at:                   C:/local/opencv-build/3rdparty/ippicv/ippicv_win/icv
+    Intel IPP IW:                sources (2019.0.0)
+              at:                C:/local/opencv-build/3rdparty/ippicv/ippicv_win/iw
+    Lapack:                      NO
+    Inference Engine:            YES (2018040000 / 1.5.0)
+                libs:            C:/local/Intel/computer_vision_sdk_2018.5.445/deployment_tools/inference_engine/lib/intel64/Release/inference_engine.lib / C:/local/Intel/computer_vision_sdk_2018.5.445/deployment_tools/inference_engine/lib/intel64/Debug/inference_engined.lib
+            includes:            C:/local/Intel/computer_vision_sdk_2018.5.445/deployment_tools/inference_engine/include
+    Eigen:                       NO
+    Custom HAL:                  NO
+    Protobuf:                    build (3.5.1)
+
+  OpenCL:                        YES (no extra features)
+    Include path:                C:/local/opencv-4.0.0/3rdparty/include/opencl/1.2
+    Link libraries:              Dynamic load
+
+  Python 3:
+    Interpreter:                 C:/Program Files/Python36/python.exe (ver 3.6.5)
+    Libraries:                   C:/Program Files/Python36/libs/python36.lib (ver 3.6.5)
+    numpy:                       C:/Users/m/AppData/Roaming/Python/Python36/site-packages/numpy/core/include (ver 1.15.4)
+    packages path:               C:/Program Files/Python36/Lib/site-packages
+
+  Python (for build):            C:/Program Files/Python36/python.exe
+
+  Java:                          
+    ant:                         NO
+    JNI:                         NO
+    Java wrappers:               NO
+    Java tests:                  NO
+
+  Install to:                    C:/local/opencv
+-----------------------------------------------------------------
+
+Configuring done
+</code></pre>
+","<p>Summarizing our discussion in comments,</p>
+
+<p>OpenVINO R5 released in December however attached CMake summary shows that used OpenCV version is older (November). So the solution is to update OpenCV to the latest version which supports Intel's Inference Engine from OpenVINO R5.</p>
+
+<p>Wiki of how to build OpenCV with IE support: <a href=""https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend"" rel=""nofollow noreferrer"">https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend</a></p>
+","2463","1","1","<c++><opencv><openvino><opencv4>"
+"63501025","How to set environment variables dynamically by script in Dockerfile?","2020-08-20 08:17:45","<p>I build my project by Dockerfile. The project need to installation of Openvino. Openvino needs to set some environment variables dynamically by a script that depends on architecture. The sciprt is: <a href=""https://gist.github.com/ahmetanbar/10257fd888323bf3bd3e4c6e99fcec37#file-setupvars-sh-L25"" rel=""nofollow noreferrer"">script to set environment variables</a></p>
+<p>As I learn, Dockerfile can't set enviroment variables to image from a script.</p>
+<p>How do I follow way to solve the problem?</p>
+<p>I need to set the variables because later I continue install opencv that looks the enviroment variables.</p>
+<p>What I think that if I put the script to ~/.bashrc file to set variables when connect to bash, if I have any trick to start bash for a second, it could solve my problem.</p>
+<p>Secondly I think that build openvino image, create container from that, connect it and initiliaze variables by running script manually in container. After that, convert the container to image. Create new Dockerfile and continue building steps by using this images for ongoing steps.</p>
+<p><a href=""https://gist.github.com/ahmetanbar/c6807a5b4a9baf84b79e6fa6fde07ef1#file-openvino-dockerfile-for-linux-L35"" rel=""nofollow noreferrer"">Openvino Dockerfile exp and line that run the script</a></p>
+<p>My Dockerfile:</p>
+<pre><code>FROM ubuntu:18.04
+
+ARG DOWNLOAD_LINK=http://registrationcenter-download.intel.com/akdlm/irc_nas/16612/l_openvino_toolkit_p_2020.2.120.tgz
+
+ENV INSTALLDIR /opt/intel/openvino
+
+# openvino download
+RUN curl -LOJ &quot;${DOWNLOAD_LINK}&quot;
+
+# opencv download
+RUN wget -O opencv.zip https://github.com/opencv/opencv/archive/4.3.0.zip &amp;&amp; \
+    wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/4.3.0.zip
+
+RUN apt-get -y install sudo
+
+# openvino installation
+RUN tar -xvzf ./*.tgz &amp;&amp; \
+    cd l_openvino_toolkit_p_2020.2.120 &amp;&amp; \
+    sed -i 's/decline/accept/g' silent.cfg &amp;&amp; \
+    ./install.sh -s silent.cfg &amp;&amp; \
+    # rm -rf /tmp/* &amp;&amp; \
+    sudo -E $INSTALLDIR/install_dependencies/install_openvino_dependencies.sh
+
+WORKDIR /home/sa
+
+RUN /bin/bash -c &quot;source /opt/intel/openvino/bin/setupvars.sh&quot; &amp;&amp; \
+    echo &quot;source /opt/intel/openvino/bin/setupvars.sh&quot; &gt;&gt; /home/sa/.bashrc &amp;&amp; \
+    echo &quot;source /opt/intel/openvino/bin/setupvars.sh&quot; &gt;&gt; ~/.bashrc &amp;&amp; \
+    $INSTALLDIR/deployment_tools/model_optimizer/install_prerequisites/install_prerequisites.sh &amp;&amp; \
+    $INSTALLDIR/deployment_tools/demo/demo_squeezenet_download_convert_run.sh
+
+RUN bash
+
+# opencv installation
+
+RUN unzip opencv.zip &amp;&amp; \
+    unzip opencv_contrib.zip &amp;&amp; \
+    # rm opencv.zip opencv_contrib.zip &amp;&amp; \
+    mv opencv-4.3.0 opencv &amp;&amp; \
+    mv opencv_contrib-4.3.0 opencv_contrib &amp;&amp; \
+    cd ./opencv &amp;&amp; \
+    mkdir build &amp;&amp; \
+    cd build &amp;&amp; \
+    cmake -D CMAKE_BUILD_TYPE=RELEASE -D WITH_INF_ENGINE=ON -D ENABLE_CXX11=ON -D CMAKE_INSTALL_PREFIX=/usr/local -D INSTALL_PYTHON_EXAMPLES=OFF -D INSTALL_C_EXAMPLES=OFF -D ENABLE_PRECOMPILED_HEADERS=OFF -D OPENCV_ENABLE_NONFREE=ON -D OPENCV_EXTRA_MODULES_PATH=/home/sa/opencv_contrib/modules -D PYTHON_EXECUTABLE=/usr/bin/python3 -D WIDTH_GTK=ON -D BUILD_TESTS=OFF -D BUILD_DOCS=OFF -D WITH_GSTREAMER=OFF -D WITH_FFMPEG=ON -D BUILD_EXAMPLES=OFF .. &amp;&amp; \
+    make &amp;&amp; \
+    make install &amp;&amp; \
+    ldconfig
+</code></pre>
+","<p>You need to cause the shell to load that file in every <code>RUN</code> command where you use it, and also at container startup time.</p>
+<p>For startup time, you can use an entrypoint wrapper script:</p>
+<pre class=""lang-sh prettyprint-override""><code>#!/bin/sh
+# Load the script of environment variables
+. /opt/intel/openvino/bin/setupvars.sh
+# Run the main container command
+exec &quot;$@&quot;
+</code></pre>
+<p>Then in the Dockerfile, you need to include the environment variable script in <code>RUN</code> commands, and make this script be the image's <code>ENTRYPOINT</code>.</p>
+<pre class=""lang-sh prettyprint-override""><code>RUN . /opt/intel/openvino/bin/setupvars.sh &amp;&amp; \
+    /opt/intel/openvino/deployment_tools/model_optimizer/install_prerequisites/install_prerequisites.sh &amp;&amp; \
+    /opt/intel/openvino/deployment_tools/demo/demo_squeezenet_download_convert_run.sh
+
+RUN ... &amp;&amp; \
+    . /opt/intel/openvino/bin/setupvars.sh &amp;&amp; \
+    cmake ... &amp;&amp; \
+    make &amp;&amp; \
+    ...
+
+ COPY entrypoint.sh .
+ ENTRYPOINT [&quot;./entrypoint.sh&quot;]
+ CMD same as the command you set in the original image
+</code></pre>
+<p>If you <code>docker exec</code> debugging shells in the container, they won't see these environment variables and you'll need to manually re-read the environment variable script.  If you use <code>docker inspect</code> to look at low-level details of the container, it also won't show the environment variables.</p>
+<hr />
+<p>It looks like that script just sets a couple of environment variables (especially <code>$LD_LIBRARY_PATH</code> and <code>$PYTHONPATH</code>), if to somewhat long-winded values, and you could just set these with <code>ENV</code> statements in the Dockerfile.</p>
+<p>If you look at the <code>docker build</code> output, there are lines like <code>---&gt; 0123456789ab</code> after each build step; those are valid image IDs that you can <code>docker run</code>.  You could run</p>
+<pre class=""lang-sh prettyprint-override""><code>docker run --rm 0123456789ab \
+  env \
+  | sort &gt; env-a
+docker run --rm 0123456789ab \
+  sh -c '. /opt/intel/openvino/bin/setupvars.sh &amp;&amp; env' \
+  | sort &gt; env-b
+</code></pre>
+<p>This will give you two local files with the environment variables with and without running this setup script.  Find the differences (say, with <strong>comm</strong>(1)), put <code>ENV</code> before each line, and add that to your Dockerfile.</p>
+<hr />
+<p>You can't really use <code>.bashrc</code> in Docker.  Many common paths don't invoke its <a href=""https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html#Bash-Startup-Files"" rel=""nofollow noreferrer"">startup files</a>: in the language of that documentation, neither a Dockerfile <code>RUN</code> command nor a <code>docker run</code> instruction is an &quot;interactive shell&quot; so those don't read dot files, and usually <code>docker run ... command</code> doesn't invoke a shell at all.</p>
+<p>You also don't need <code>sudo</code> (you are already running as root, and an interactive password prompt will fail); <code>RUN sh -c</code> is redundant (Docker inserts it on its own); and <code>source</code> isn't a standard shell command (prefer the standard <code>.</code>, which will work even on Alpine-based images that don't have shell extensions).</p>
+","2446","1","1","<docker><dockerfile><openvino>"
+"62129609","OpenVINO - Toolkit with YoloV4","2020-06-01 09:51:41","<p>I am currently working with the YoloV3-tiny.
+Repository: <a href=""https://github.com/AlexeyAB/darknet"" rel=""nofollow noreferrer"">https://github.com/AlexeyAB/darknet</a></p>
+
+<p>To import the network into C++ project I use OpenVINO-Toolkit. In more detail I use the following procedure to convert the network:
+<a href=""https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_tf_specific_Convert_YOLO_From_Tensorflow.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_tf_specific_Convert_YOLO_From_Tensorflow.html</a></p>
+
+<p>This procedure carries out a conversion and an optimization to proceed with the inference.</p>
+
+<p>Now, I would like to try the YoloV4 because it seems to be more effective for the purpose of the project. The problem is that OpenVINO Toolkit does not yet support this version and does not report the .json (file needed for optimization) file relative to version 4 but only up to version 3.</p>
+
+<p>What has changed in terms of structure between version 3 and version 4 of the Yolo?
+Can I hopefully hope that the conversion of the YoloV3-tiny (or YoloV3) is the same as the YoloV4?
+Is the YoloV4 much slower than the YoloV3-tiny using only the CPU for inference?
+When will the YoloV4-tiny be available?
+Anyone have information about it?</p>
+
+<p>Thanks in advance to anyone who gives me useful information.</p>
+","<ul>
+<li>The difference between YoloV4 and YoloV3 is the backbone. YoloV4 has CSPDarknet53, whilst YoloV3 has Darknet53 backbone.
+See <a href=""https://arxiv.org/pdf/2004.10934.pdf"" rel=""noreferrer"">https://arxiv.org/pdf/2004.10934.pdf</a>.</li>
+<li>Also, YoloV4 is not supported officially by OpenVINO. However, you can still test and validate YoloV4 on your end with some workaround. There is one way for now to run YoloV4 through OpenCV which will build network using nGraph API and then pass to Inference Engine. See <a href=""https://github.com/opencv/opencv/pull/17185"" rel=""noreferrer"">https://github.com/opencv/opencv/pull/17185</a>.</li>
+<li>The key problem is the Mish activation function - there is no optimized implementation yet, which is why we have to implement it by definition with tanh and exponential functions. Unfortunately, one-to-one topology comparison shows significant performance degradation. The performance results are also available in the github link above.</li>
+</ul>
+","2430","2","2","<yolo><openvino>"
+"62129609","OpenVINO - Toolkit with YoloV4","2020-06-01 09:51:41","<p>I am currently working with the YoloV3-tiny.
+Repository: <a href=""https://github.com/AlexeyAB/darknet"" rel=""nofollow noreferrer"">https://github.com/AlexeyAB/darknet</a></p>
+
+<p>To import the network into C++ project I use OpenVINO-Toolkit. In more detail I use the following procedure to convert the network:
+<a href=""https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_tf_specific_Convert_YOLO_From_Tensorflow.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_tf_specific_Convert_YOLO_From_Tensorflow.html</a></p>
+
+<p>This procedure carries out a conversion and an optimization to proceed with the inference.</p>
+
+<p>Now, I would like to try the YoloV4 because it seems to be more effective for the purpose of the project. The problem is that OpenVINO Toolkit does not yet support this version and does not report the .json (file needed for optimization) file relative to version 4 but only up to version 3.</p>
+
+<p>What has changed in terms of structure between version 3 and version 4 of the Yolo?
+Can I hopefully hope that the conversion of the YoloV3-tiny (or YoloV3) is the same as the YoloV4?
+Is the YoloV4 much slower than the YoloV3-tiny using only the CPU for inference?
+When will the YoloV4-tiny be available?
+Anyone have information about it?</p>
+
+<p>Thanks in advance to anyone who gives me useful information.</p>
+","<p><a href=""https://github.com/TNTWEN/OpenVINO-YOLOV4"" rel=""nofollow noreferrer"">https://github.com/TNTWEN/OpenVINO-YOLOV4</a>
+This is my project based on v3's converter (darknet -&gt; tensorflow -&gt;IR)and i have finished the adaptation of OpenVINO Yolov4,v4-relu,v4-tiny.
+You could have a try.  And you can use V4's IRmodel and run on v3's c++ demo directly</p>
+","2430","2","2","<yolo><openvino>"
+"55345798","How to use OpenVINO pre-trained models?","2019-03-25 20:19:59","<p>I have installed OpenVINO recently but I don't know how I should give inputs and get the predict from OpenVINOs pre-trained models.</p>
+
+<p>there is two files with .bin and .xml suffixes, I've just worked with keras so I can't use this models in opencv.</p>
+
+<p>I find this code but it didn't work.</p>
+
+<pre><code>import cv2 as cv
+
+net = cv.dnn.readNet('face-detection-adas-0001.bin', 'face-detection-adas-0001.xml')
+
+cap = cv.VideoCapture(0)
+
+while cv.waitKey(1) &lt; 0:
+    hasFrame, frame = cap.read()
+    if not hasFrame:
+        break
+
+    blob = cv.dnn.blobFromImage(frame, size=(672, 384))
+    net.setInput(blob)
+    out = net.forward()
+
+    for detection in out.reshape(-1, 7):
+        confidence = float(detection[2])
+        xmin = int(detection[3] * frame.shape[1])
+        ymin = int(detection[4] * frame.shape[0])
+        xmax = int(detection[5] * frame.shape[1])
+        ymax = int(detection[6] * frame.shape[0])
+
+        if confidence &gt; 0.5:
+            cv.rectangle(frame, (xmin, ymin), (xmax, ymax), color=(0, 255, 0))
+
+    cv.imshow('OpenVINO face detection', frame)
+</code></pre>
+
+<p>there's the error code:</p>
+
+<pre><code>Traceback (most recent call last):
+  File ""C:\Users\Ali-10\Desktop\facial_landmark\face.py"", line 3, in &lt;module&gt;
+    net = cv.dnn.readNet('face-detection-adas-0001.bin', 'face-detection-adas-0001.xml')
+    cv2.error: OpenCV(3.4.4) C:\projects\opencv-python\opencv\modules\dnn\src\dnn.cpp:2428: error: (-2:Unspecified error) Build OpenCV with Inference Engine to enable loading models from Model Optimizer. in function 'cv::dnn::experimental_dnn_34_v10::Net::readFromModelOptimizer'
+</code></pre>
+
+<p>I expect the prediction of the model but I just get this error.</p>
+","<p>You need to build OpenCV with Inference Engine support as mentioned in the message. See wiki for details: <a href=""https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend"" rel=""nofollow noreferrer"">https://github.com/opencv/opencv/wiki/Intel%27s-Deep-Learning-Inference-Engine-backend</a>.</p>
+
+<p>If you use OpenCV from OpenVINO distribution, it must be already built with IE (maybe except a single R5.1 release from January of 2019).</p>
+
+<p>We also work on simplified way to build OpenCV with IE (without specifying paths but just downloading it's source code by cmake), see PR <a href=""https://github.com/opencv/opencv/pull/13965"" rel=""nofollow noreferrer"">https://github.com/opencv/opencv/pull/13965</a>.</p>
+","2371","2","2","<python><intel><openvino>"
+"55345798","How to use OpenVINO pre-trained models?","2019-03-25 20:19:59","<p>I have installed OpenVINO recently but I don't know how I should give inputs and get the predict from OpenVINOs pre-trained models.</p>
+
+<p>there is two files with .bin and .xml suffixes, I've just worked with keras so I can't use this models in opencv.</p>
+
+<p>I find this code but it didn't work.</p>
+
+<pre><code>import cv2 as cv
+
+net = cv.dnn.readNet('face-detection-adas-0001.bin', 'face-detection-adas-0001.xml')
+
+cap = cv.VideoCapture(0)
+
+while cv.waitKey(1) &lt; 0:
+    hasFrame, frame = cap.read()
+    if not hasFrame:
+        break
+
+    blob = cv.dnn.blobFromImage(frame, size=(672, 384))
+    net.setInput(blob)
+    out = net.forward()
+
+    for detection in out.reshape(-1, 7):
+        confidence = float(detection[2])
+        xmin = int(detection[3] * frame.shape[1])
+        ymin = int(detection[4] * frame.shape[0])
+        xmax = int(detection[5] * frame.shape[1])
+        ymax = int(detection[6] * frame.shape[0])
+
+        if confidence &gt; 0.5:
+            cv.rectangle(frame, (xmin, ymin), (xmax, ymax), color=(0, 255, 0))
+
+    cv.imshow('OpenVINO face detection', frame)
+</code></pre>
+
+<p>there's the error code:</p>
+
+<pre><code>Traceback (most recent call last):
+  File ""C:\Users\Ali-10\Desktop\facial_landmark\face.py"", line 3, in &lt;module&gt;
+    net = cv.dnn.readNet('face-detection-adas-0001.bin', 'face-detection-adas-0001.xml')
+    cv2.error: OpenCV(3.4.4) C:\projects\opencv-python\opencv\modules\dnn\src\dnn.cpp:2428: error: (-2:Unspecified error) Build OpenCV with Inference Engine to enable loading models from Model Optimizer. in function 'cv::dnn::experimental_dnn_34_v10::Net::readFromModelOptimizer'
+</code></pre>
+
+<p>I expect the prediction of the model but I just get this error.</p>
+","<p>I just tested this code and it works perfectly fine. You need to install openvino first and then run setupvars.bat file in order to initialize the openvino enviroment. Once that is done, you can run your code and it will start detecting your face. I tested this on Intel i5 with 12Gb RAM and I was getting 23-25fps which is good. </p>
+","2371","2","2","<python><intel><openvino>"
+"56682575","Running MTCNN with OpenVino","2019-06-20 09:05:58","<p>I am trying to use OpenVino python API to run MTCNN face detection, however, the performance of the converted models degraded significantly from the original model. I am wondering how I could get similar results. </p>
+
+<p>I converted the <a href=""https://github.com/TropComplique/mtcnn-pytorch/tree/master/caffe_models"" rel=""nofollow noreferrer"">mtcnn caffe models</a> into OpenVino *.xml and *.bin files using the following commands.</p>
+
+<pre><code>python3 mo.py --input_model path/to/PNet/det1.caffemodel --model_name det1 --output_dir path/to/output_dir
+python3 mo.py --input_model path/to/RNet/det2.caffemodel --model_name det2 --output_dir path/to/output_dir
+python3 mo.py --input_model path/to/ONet/det3.caffemodel --model_name det3 --output_dir path/to/output_dir
+</code></pre>
+
+<p>And used the <a href=""https://github.com/TropComplique/mtcnn-pytorch/blob/master/try_mtcnn_step_by_step.ipynb"" rel=""nofollow noreferrer"">step_by_step mtcnn jupyter notebook</a> to check the performance of the converted models.</p>
+
+<p>But detection results using OpenVino models degraded significantly. To regenerate the results you only need to load OpenVino models instead of pytorch model in the notebook.</p>
+
+<p>To regenerate my results do the following steps.</p>
+
+<p>Clone <a href=""https://github.com/TropComplique/mtcnn-pytorch.git"" rel=""nofollow noreferrer"">https://github.com/TropComplique/mtcnn-pytorch.git</a></p>
+
+<p>And use <a href=""https://dl.dropboxusercontent.com/s/u0l63dv1lueckly/openvino.ipynb"" rel=""nofollow noreferrer"">this jupyter notebbok</a></p>
+
+<p>As you will see the detected boxes in the first stage after P-Net are more than the detected boxes in the original model <a href=""https://github.com/TropComplique/mtcnn-pytorch/blob/master/try_mtcnn_step_by_step.ipynb"" rel=""nofollow noreferrer"">step_by_step mtcnn jupyter notebook</a>.</p>
+
+<p>Do you have any comment on this. It seems that there is no problem in model conversion the only difference is that pytorch has a variable tensor size (FloatTensor) but for OpenVino I have to reshape the input size for each scale. This might be the reason to get different results, however I have not been able to solve this problem.</p>
+","<p>I went through all the possible mistake I might had made and check parameters to convert mtcnn models from list_topologies.yaml. This file comes with OpenVino installation and list the parameters like scale mean values and etc.</p>
+
+<p>Finally, I solved the problem by using MXNET pre-trained <a href=""https://github.com/YYuanAnyVision/mxnet_mtcnn_face_detection"" rel=""nofollow noreferrer"">MTCNN networks</a>.</p>
+
+<p>I hope this would help other users who might encounter this problem.</p>
+","2323","2","1","<python><face-detection><openvino>"
+"55611848","How to set input shape for model optimizer in OpenVINO for Tacotron model?","2019-04-10 11:49:55","<p>I'm trying to get KeithIto's Tacotron model run on Intel OpenVINO with NCS. The model optimizer fails to convert the frozen model to IR format. </p>
+
+<p>After asking in the Intel Forum, I was told the 2018 R5 release didn't have GRU support and I changed it to LSTM cells. But the model still runs well in tensorflow after training it. Also I updated my OpenVINO to 2019 R1 release. But the optimizer still threw errors. The model has mainly two input nodes: inputs[N,T_in] and input_lengths[N]; where N is batch size, T_in is number of steps in the input time series, and values are character IDs with default shapes as [1,?] and [1]. 
+The problem is with [1,?] as model optimizer doesn't allow for dynamic shapes. I tried different values and it always throws some errors. </p>
+
+<p>I tried frozen graphs with output node ""model/griffinlim/Squeeze"" which is the final decoder output and also with ""model/inference/dense/BiasAdd"" as mentioned in (<a href=""https://github.com/keithito/tacotron/issues/95#issuecomment-362854371"" rel=""nofollow noreferrer"">https://github.com/keithito/tacotron/issues/95#issuecomment-362854371</a>) which is the input for the Griffin-lim vocoder so that I can do the Spectrogram2Wav part outside the model and reduce it's complexity.</p>
+
+<pre><code>C:\Program Files (x86)\IntelSWTools\openvino\deployment_tools\model_optimizer&gt;python mo_tf.py --input_model ""D:\Programming\LSTM\logs-tacotron\freezeinf.pb"" --freeze_placeholder_with_value ""input_lengths-&gt;[1]"" --input inputs --input_shape [1,128] --output model/inference/dense/BiasAdd
+Model Optimizer arguments:
+Common parameters:
+        - Path to the Input Model:      D:\Programming\Thesis\LSTM\logs-tacotron\freezeinf.pb
+        - Path for generated IR:        C:\Program Files (x86)\IntelSWTools\openvino\deployment_tools\model_optimizer\.
+        - IR output name:       freezeinf
+        - Log level:    ERROR
+        - Batch:        Not specified, inherited from the model
+        - Input layers:         inputs
+        - Output layers:        model/inference/dense/BiasAdd
+        - Input shapes:         [1,128]
+        - Mean values:  Not specified
+        - Scale values:         Not specified
+        - Scale factor:         Not specified
+        - Precision of IR:      FP32
+        - Enable fusing:        True
+        - Enable grouped convolutions fusing:   True
+        - Move mean values to preprocess section:       False
+        - Reverse input channels:       False
+TensorFlow specific parameters:
+        - Input model in text protobuf format:  False
+        - Path to model dump for TensorBoard:   None
+        - List of shared libraries with TensorFlow custom layers implementation:        None
+        - Update the configuration file with input/output node names:   None
+        - Use configuration file used to generate the model with Object Detection API:  None
+        - Operations to offload:        None
+        - Patterns to offload:  None
+        - Use the config file:  None
+Model Optimizer version:        2019.1.0-341-gc9b66a2
+[ ERROR ]  Shape [  1  -1 128] is not fully defined for output 0 of ""model/inference/post_cbhg/conv_bank/conv1d_8/batch_normalization/batchnorm/mul_1"". Use --input_shape with positive integers to override model input shapes.
+[ ERROR ]  Cannot infer shapes or values for node ""model/inference/post_cbhg/conv_bank/conv1d_8/batch_normalization/batchnorm/mul_1"".
+[ ERROR ]  Not all output shapes were inferred or fully defined for node ""model/inference/post_cbhg/conv_bank/conv1d_8/batch_normalization/batchnorm/mul_1"".
+ For more information please refer to Model Optimizer FAQ (&lt;INSTALL_DIR&gt;/deployment_tools/documentation/docs/MO_FAQ.html), question #40.
+[ ERROR ]
+[ ERROR ]  It can happen due to bug in custom shape infer function &lt;function tf_eltwise_ext.&lt;locals&gt;.&lt;lambda&gt; at 0x000001F00598FE18&gt;.
+[ ERROR ]  Or because the node inputs have incorrect values/shapes.
+[ ERROR ]  Or because input shapes are incorrect (embedded to the model or passed via --input_shape).
+[ ERROR ]  Run Model Optimizer with --log_level=DEBUG for more information.
+[ ERROR ]  Exception occurred during running replacer ""REPLACEMENT_ID"" (&lt;class 'extensions.middle.PartialInfer.PartialInfer'&gt;): Stopped shape/value propagation at ""model/inference/post_cbhg/conv_bank/conv1d_8/batch_normalization/batchnorm/mul_1"" node.
+ For more information please refer to Model Optimizer FAQ (&lt;INSTALL_DIR&gt;/deployment_tools/documentation/docs/MO_FAQ.html), question #38.
+</code></pre>
+
+<p>I also tried different methods for freezing the graph. </p>
+
+<p><strong>METHODS 1:</strong>
+Using freeze_graph.py provided in Tensorflow after dumping graph with:</p>
+
+<pre><code>tf.train.write_graph(self.session.graph.as_graph_def(), ""models/"", ""graph.pb"", as_text=True)
+</code></pre>
+
+<p>followed by:</p>
+
+<pre><code>python freeze_graph.py --input_graph .\models\graph.pb  --output_node_names ""model/griffinlim/Squeeze"" --output_graph .\logs-tacotron\freezeinf.pb --input_checkpoint .\logs-tacotron\model.ckpt-33000 --input_binary=true
+</code></pre>
+
+<p><strong>METHODS 2:</strong>
+Using the following code after loading the model:</p>
+
+<pre><code>frozen = tf.graph_util.convert_variables_to_constants(self.session,self.session.graph_def, [""model/inference/dense/BiasAdd""]) #model/griffinlim/Squeeze
+graph_io.write_graph(frozen, ""models/"", ""freezeinf.pb"", as_text=False)
+</code></pre>
+
+<p>I expected the BatchNormalization and Dropout layers to be removed after the freezing, but looking at the errors it seems that it still exists.</p>
+
+<p><strong>Environment</strong></p>
+
+<p>OS: Windows 10 Pro</p>
+
+<p>Python 3.6.5</p>
+
+<p>Tensorflow 1.12.0</p>
+
+<p>OpenVINO 2019 R1 release</p>
+
+<p>Can anyone help with the above problems with the optimizer?</p>
+","<p>OpenVINO does not support this model yet. We will keep you updated when it will be. </p>
+","2091","3","1","<python><tensorflow><text-to-speech><speech-synthesis><openvino>"
+"56240111","OpenVINO + HDDL plugin - Cannot run openvino samples - ""HDDL hardware initialization failed""","2019-05-21 14:07:08","<p>I'm trying to get OpenVINO samples working on an mPCIe Myriad X card (with 2 MA2485 chips).  </p>
+
+<p>My goal is to get the samples working using the HDDL plugin, as from my understanding it should allow for working with multiple chips in parallel.</p>
+
+<p>Using the ""MYRIAD"" plugin, the benchmarks run successfully every single time:
+<code>sudo -E ./demo_squeezenet_download_convert_run.sh -d MYRIAD</code></p>
+
+<p>however, when switching to <code>-d HDDL</code> I get the following:</p>
+
+<pre><code>Run ./classification_sample -d HDDL -i /opt/intel/openvino_2019.1.144/deployment_tools/demo/car.png -m /home/vino/openvino_models/ir/FP16//classification/squeezenet/1.1/caffe/squeezenet1.1.xml 
+
+[ INFO ] InferenceEngine: 
+    API version ............ 1.6
+    Build .................. custom_releases/2019/R1.1_28dfbfdd28954c4dfd2f94403dd8dfc1f411038b
+[ INFO ] Parsing input parameters
+[ INFO ] Files were added: 1
+[ INFO ]     /opt/intel/openvino_2019.1.144/deployment_tools/demo/car.png
+[ INFO ] Loading plugin
+
+    API version ............ 1.6
+    Build .................. 23780
+    Description ....... HDDLPlugin
+[ INFO ] Loading network files:
+    /home/vino/openvino_models/ir/FP16//classification/squeezenet/1.1/caffe/squeezenet1.1.xml
+    /home/vino/openvino_models/ir/FP16//classification/squeezenet/1.1/caffe/squeezenet1.1.bin
+[ INFO ] Preparing input blobs
+[ WARNING ] Image is resized from (787, 259) to (227, 227)
+[ INFO ] Batch size is 1
+[ INFO ] Preparing output blobs
+[ INFO ] Loading model to the plugin
+[16:52:27.5232][31126]I[ServiceStarter.cpp:93] Info: Found HDDL Service is not running. To start HDDL Service ...
+[16:52:27.5241][31126]I[ServiceStarter.cpp:40] Info: Waiting for HDDL Service getting ready ...
+Config file detected at /opt/intel/openvino_2019.1.144/deployment_tools/inference_engine/external/hddl/config/bsl.json
+scan F75114 device...
+found 0 F75114 device
+hid-f75114 init returned status BSL_ERROR_NO_HID_DEVICE_FOUND
+ioexpander is disabled by config, skipping
+mcu is disabled by config, skipping
+Auto-scan is disabled by config, aborting
+bsl init failed for:    BSL_ERROR_NO_HID_DEVICE_FOUND
+[ion_close][69]close ion_fd = 3
+Config file detected at /opt/intel/openvino_2019.1.144/deployment_tools/inference_engine/external/hddl/config/bsl.json
+scan F75114 device...
+found 0 F75114 device
+hid-f75114 init returned status BSL_ERROR_NO_HID_DEVICE_FOUND
+ioexpander is disabled by config, skipping
+mcu is disabled by config, skipping
+Auto-scan is disabled by config, aborting
+bsl init failed for:    BSL_ERROR_NO_HID_DEVICE_FOUND
+## HDDL_INSTALL_DIR: /opt/intel/openvino_2019.1.144/deployment_tools/inference_engine/external/hddl
+[16:52:27.5367][31131]I[ConfigParser.cpp:176] Config file '/opt/intel/openvino_2019.1.144/deployment_tools/inference_engine/external/hddl/config/hddl_service.config' has been loaded
+[16:52:27.5372][31131]I[FileHelper.cpp:272] Set file:/var/tmp/hddl_service_alive.mutex owner: user-'no_change', group-'users', mode-'0660'
+[16:52:27.5372][31131]I[FileHelper.cpp:272] Set file:/var/tmp/hddl_service_ready.mutex owner: user-'no_change', group-'users', mode-'0660'
+[16:52:27.5373][31131]I[FileHelper.cpp:272] Set file:/var/tmp/hddl_start_exit.mutex owner: user-'no_change', group-'users', mode-'0660'
+[16:52:27.5374][31131]I[AutobootStarter.cpp:150] Info: No running autoboot process. Start autoboot daemon...
+Config file detected at /opt/intel/openvino_2019.1.144/deployment_tools/inference_engine/external/hddl/config/bsl.json
+scan F75114 device...
+found 0 F75114 device
+hid-f75114 init returned status BSL_ERROR_NO_HID_DEVICE_FOUND
+ioexpander is disabled by config, skipping
+mcu is disabled by config, skipping
+Auto-scan is disabled by config, aborting
+bsl init failed for:    BSL_ERROR_NO_HID_DEVICE_FOUND
+[16:52:27.5457][31133]I[ConfigParser.cpp:176] Config file '/opt/intel/openvino_2019.1.144/deployment_tools/inference_engine/external/hddl/config/hddl_autoboot.config' has been loaded
+[16:52:27.5462][31133]I[FileHelper.cpp:272] Set file:/var/tmp/hddl_autoboot_alive.mutex owner: user-'no_change', group-'users', mode-'0660'
+[16:52:27.5463][31133]I[FileHelper.cpp:272] Set file:/var/tmp/hddl_autoboot_ready.mutex owner: user-'no_change', group-'users', mode-'0660'
+[16:52:27.5463][31133]I[FileHelper.cpp:272] Set file:/var/tmp/hddl_autoboot_start_exit.mutex owner: user-'no_change', group-'users', mode-'0660'
+[16:52:27.5463][31133]I[FileHelper.cpp:272] Set file:/tmp/hddl_autoboot_device.map owner: user-'no_change', group-'users', mode-'0660'
+[16:52:27.5464][31133]I[AutoBoot.cpp:282] [Firmware Config] deviceName=default deviceNum=0 firmwarePath=/opt/intel/openvino_2019.1.144/deployment_tools/inference_engine/external/hddl/lib/mvnc/MvNCAPI-ma2480.mvcmd
+Reset all devices with device type 3
+[16:52:27.5468][31133]ERROR[AutoBoot.cpp:444] Error: HDDL hardware initialization failed, exits now.
+[ion_close][69]close ion_fd = 3
+</code></pre>
+
+<p>I've tried messing with various configuration options but to no avail.
+I've also tried reinstalling Ubuntu, which did not work either.</p>
+
+<p>Using Ubuntu 16.04.6, kernel 4.4.0-148-generic.</p>
+
+<p>lshw entry:</p>
+
+<pre><code>       *-pci
+             description: PCI bridge
+             product: 7 Series/C216 Chipset Family PCI Express Root Port 1
+             vendor: Intel Corporation
+             physical id: 1c
+             bus info: pci@0000:00:1c.0
+             version: c4
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pci pciexpress msi pm normal_decode bus_master cap_list
+             configuration: driver=pcieport
+             resources: irq:16 memory:f7c00000-f7cfffff
+           *-usb
+                description: USB controller
+                product: ASM1042A USB 3.0 Host Controller
+                vendor: ASMedia Technology Inc.
+                physical id: 0
+                bus info: pci@0000:01:00.0
+                version: 00
+                width: 64 bits
+                clock: 33MHz
+                capabilities: msi msix pm pciexpress xhci bus_master cap_list
+                configuration: driver=xhci_hcd latency=0
+                resources: irq:16 memory:f7c00000-f7c07fff
+              *-usbhost:0
+                   product: xHCI Host Controller
+                   vendor: Linux 4.4.0-148-generic xhci-hcd
+                   physical id: 0
+                   bus info: usb@6
+                   logical name: usb6
+                   version: 4.04
+                   capabilities: usb-3.00
+                   configuration: driver=hub slots=2 speed=5000Mbit/s
+              *-usbhost:1
+                   product: xHCI Host Controller
+                   vendor: Linux 4.4.0-148-generic xhci-hcd
+                   physical id: 1
+                   bus info: usb@5
+                   logical name: usb5
+                   version: 4.04
+                   capabilities: usb-2.00
+                   configuration: driver=hub slots=2 speed=480Mbit/s
+                 *-usb UNCLAIMED
+                      description: Generic USB device
+                      product: Movidius MyriadX
+                      vendor: Movidius Ltd.
+                      physical id: 1
+                      bus info: usb@5:1
+                      version: 0.01
+                      serial: 03e72485
+                      capabilities: usb-2.00
+                      configuration: maxpower=500mA speed=480Mbit/s
+</code></pre>
+
+<p>${HDDL_INSTALL_DIR}/config/bsl.json (tried multiple configurations here, nothing worked):</p>
+
+<pre><code>{
+  ""autoscan"": false,
+  ""comment_on_autoscan"": ""auto-scan can be true or false"",
+  ""hid-f75114"": {
+    ""enabled"": true,
+    ""Linux_comment"": ""You can use setup_tools/path_detaction.sh to get the suggested paths"",
+    ""Linux_path_example"": ""/sys/devices/pci0000:00/0000:00:01.1/0000:02:00.0/0000:03:04.0/0000:07:00.0/usb9/9-2/9-2.2/9-2.2:1.0"",
+    ""Windows_comment"": ""HID\\VID_2C42&amp;PID_5114\\6&amp;A471F67&amp;0&amp;0000 is for Windows"",
+    ""Comment"": ""Leave empty to pass all paths"",
+    ""hid_paths"": [
+        ""/sys/devices/pci0000:00/0000:00:1c.0/0000:01:00.0/usb5/5-1/5-1:1.0""
+    ]
+  },
+  ""ioexpander"": {
+    ""enabled"": false,
+    ""i2c_addr"": [
+      37,
+      39
+    ]
+  },
+  ""mcu"": {
+    ""enabled"": false,
+    ""i2c_addr"": [
+      31
+    ]
+  }
+}
+</code></pre>
+","<p>Turned out to be a hardware issue.</p>
+","1914","1","1","<openvino><hddl><movidius>"
+"54321017","Building opencv with Intel Inference Engine","2019-01-23 06:13:57","<p>Trying to load ssdlite v2 model with intel inference engine on raspberry Pi 3. For this, I need to build opencv-4.0 with Intel Inference API engine. I am unable to build open CV using CMAKE with  -DWITH_INF_ENGINE=ON ^
+  -DENABLE_CXX11=ON flags. Does anyone know how to do it?</p>
+","<p>First you need install or compile this engine, see you <a href=""https://software.intel.com/en-us/articles/OpenVINO-Install-RaspberryPI"" rel=""nofollow noreferrer"">Intel OpenVINO</a> documentation.</p>
+","1663","0","1","<opencv><intel><inference-engine><openvino>"
+"59372361","Downloading pre-trained models from OpenVINO™ Toolkit Pre-Trained Models by Ubuntu Terminal","2019-12-17 10:34:51","<p>I am trying to use some pre-trained model from the intel Pretrained model zoo. Here is the address of that site <a href=""https://docs.openvinotoolkit.org/latest/_models_intel_index.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_models_intel_index.html</a>. Is there any specific command for downloading these models in a Linux system. </p>
+","<p>As mentioned in the following url:-<a href=""https://docs.openvinotoolkit.org/latest/_models_intel_index.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_models_intel_index.html</a>, you can download the pretrained models using Model Downloader.(/deployment_tools/open_model_zoo/tools/downloader)</p>
+
+<p>More details about model downloader can be found from the following url:
+<a href=""https://docs.openvinotoolkit.org/latest/_tools_downloader_README.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_tools_downloader_README.html</a></p>
+","1530","1","2","<linux><openvino>"
+"59372361","Downloading pre-trained models from OpenVINO™ Toolkit Pre-Trained Models by Ubuntu Terminal","2019-12-17 10:34:51","<p>I am trying to use some pre-trained model from the intel Pretrained model zoo. Here is the address of that site <a href=""https://docs.openvinotoolkit.org/latest/_models_intel_index.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_models_intel_index.html</a>. Is there any specific command for downloading these models in a Linux system. </p>
+","<p>downloader.py (model downloader) downloads model files from online sources and, if necessary, patches them to make them more usable with Model Optimizer;</p>
+
+<p><strong>USAGE</strong>
+The basic usage is to run the script like this:</p>
+
+<pre><code>./downloader.py --all
+</code></pre>
+
+<p>This will download all models into a directory tree rooted in the current directory. To download into a different directory, use the -o/--output_dir option:</p>
+
+<pre><code>./downloader.py --all --output_dir my/download/directory
+</code></pre>
+
+<p>The --all option can be replaced with other filter options to download only a subset of models. See the ""Shared options"" section.</p>
+
+<p>You may use --precisions flag to specify comma separated precisions of weights to be downloaded.</p>
+
+<pre><code>./downloader.py --name face-detection-retail-0004 --precisions FP16,INT8
+</code></pre>
+
+<p>By default, the script will attempt to download each file only once. You can use the --num_attempts option to change that and increase the robustness of the download process:</p>
+
+<pre><code>./downloader.py --all --num_attempts 5 # attempt each download five times
+</code></pre>
+
+<p>You can use the --cache_dir option to make the script use the specified directory as a cache. The script will place a copy of each downloaded file in the cache, or, if it is already there, retrieve it from the cache instead of downloading it again.</p>
+
+<pre><code>./downloader.py --all --cache_dir my/cache/directory
+</code></pre>
+
+<p>The cache format is intended to remain compatible in future Open Model Zoo versions, so you can use a cache to avoid redownloading most files when updating Open Model Zoo.</p>
+
+<p>By default, the script outputs progress information as unstructured, human-readable text. If you want to consume progress information programmatically, use the --progress_format option:</p>
+
+<pre><code>./downloader.py --all --progress_format=json
+</code></pre>
+
+<p>When this option is set to json, the script's standard output is replaced by a machine-readable progress report, whose format is documented in the ""JSON progress report format"" section. This option does not affect errors and warnings, which will still be printed to the standard error stream in a human-readable format.</p>
+
+<p>You can also set this option to text to explicitly request the default text format.</p>
+
+<p>See the ""Shared options"" section for information on other options accepted by the script.</p>
+
+<p>More details about model downloader can be found from the following url: <a href=""https://docs.openvinotoolkit.org/latest/_tools_downloader_README.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_tools_downloader_README.html</a></p>
+","1530","1","2","<linux><openvino>"
+"54563695","Mask RCNN OpenVino - C++ API","2019-02-06 22:43:30","<p>I would like to implement a custom image classifier using MaskRCNN.</p>
+<p>In order to increase the speed of the network, i would like to optimise the inference.</p>
+<p>I already used OpenCV DNN library, but i would like to do a step forward with OpenVINO.</p>
+<p>I used successfully OpenVINO Model optimiser (python), to build the .xml and .bin file representing my network.</p>
+<p>I successfully builded OpenVINO Sample directory with Visual Studio 2017 and run MaskRCNNDemo project.</p>
+<pre><code>mask_rcnn_demo.exe -m .\Release\frozen_inference_graph.xml -i .\Release\input.jpg
+
+InferenceEngine:
+        API version ............ 1.4
+        Build .................. 19154
+[ INFO ] Parsing input parameters
+[ INFO ] Files were added: 1
+[ INFO ]     .\Release\input.jpg
+[ INFO ] Loading plugin
+
+        API version ............ 1.5
+        Build .................. win_20181005
+        Description ....... MKLDNNPlugin
+[ INFO ] Loading network files
+[ INFO ] Preparing input blobs
+[ WARNING ] Image is resized from (4288, 2848) to (800, 800)
+[ INFO ] Batch size is 1
+[ INFO ] Preparing output blobs
+[ INFO ] Loading model to the plugin
+[ INFO ] Start inference (1 iterations)
+
+Average running time of one iteration: 2593.81 ms
+
+[ INFO ] Processing output blobs
+[ INFO ] Detected class 16 with probability 0.986519: [2043.3, 1104.9], [2412.87, 1436.52]
+[ INFO ] Image out.png created!
+[ INFO ] Execution successful
+</code></pre>
+<p><a href=""https://i.stack.imgur.com/A7mzn.jpg"" rel=""nofollow noreferrer""><img src=""https://i.stack.imgur.com/A7mzn.jpg"" alt=""Oiseau VINO CPP"" /></a></p>
+<p>Then i tried to reproduce this project in a separate project...
+First i had to watch dependancies...</p>
+<pre><code>&lt;MaskRCNNDemo&gt;
+     //References
+     &lt;format_reader/&gt;    =&gt; Open CV Images, resize it and get uchar data
+     &lt;ie_cpu_extension/&gt; =&gt; CPU extension for un-managed layers (?)
+
+     //Linker
+     format_reader.lib         =&gt; Format Reader Lib (VINO Samples Compiled)
+     cpu_extension.lib         =&gt; CPU extension Lib (VINO Samples Compiled)
+     inference_engined.lib     =&gt; Inference Engine lib (VINO)
+     opencv_world401d.lib      =&gt; OpenCV Lib
+     libiomp5md.lib            =&gt; Dependancy
+     ... (other libs)
+</code></pre>
+<p>With it i've build a new project, with my own classes and way to open images (multiframe tiff).
+This work without problem then i will not describe (i use with a CV DNN inference engine without problem).</p>
+<p>I wanted to build the same project than MaskRCNNDemo : CustomIA</p>
+<pre><code>&lt;CustomIA&gt;
+     //References
+     None =&gt; I use my own libtiff way to open image and i resize with OpenCV
+     None =&gt; I will just add include to cpu_extension source code.
+
+     //Linker
+     opencv_world345d.lib   =&gt; OpenCV 3.4.5 library
+     tiffd.lib              =&gt; Libtiff Library
+     cpu_extension.lib      =&gt; CPU extension compiled with sample
+     inference_engined.lib  =&gt; Inference engine lib.
+</code></pre>
+<p>I added the following dll to the project target dir :</p>
+<pre><code>cpu_extension.dll
+inference_engined.dll
+libiomp5md.dll
+mkl_tiny_omp.dll
+MKLDNNPlugind.dll
+opencv_world345d.dll
+tiffd.dll
+tiffxxd.dll
+</code></pre>
+<p>I successfully compiled and execute but i faced two issues :</p>
+<p>OLD CODE:</p>
+<pre><code> slog::info &lt;&lt; &quot;Loading plugin&quot; &lt;&lt; slog::endl;
+    InferencePlugin plugin = PluginDispatcher({ FLAGS_pp, &quot;../../../lib/intel64&quot; , &quot;&quot; }).getPluginByDevice(FLAGS_d);
+
+    /** Loading default extensions **/
+    if (FLAGS_d.find(&quot;CPU&quot;) != std::string::npos) {
+        /**
+         * cpu_extensions library is compiled from &quot;extension&quot; folder containing
+         * custom MKLDNNPlugin layer implementations. These layers are not supported
+         * by mkldnn, but they can be useful for inferring custom topologies.
+        **/
+        plugin.AddExtension(std::make_shared&lt;Extensions::Cpu::CpuExtensions&gt;());
+    }
+    /** Printing plugin version **/
+    printPluginVersion(plugin, std::cout);
+</code></pre>
+<p><strong>OUTPUT :</strong></p>
+<pre><code>[ INFO ] Loading plugin
+    API version ............ 1.5
+    Build .................. win_20181005
+    Description ....... MKLDNNPlugin
+</code></pre>
+<p>NEW CODE:</p>
+<pre><code>    VINOEngine::VINOEngine()
+{
+    // Loading Plugin
+    std::cout &lt;&lt; std::endl;
+    std::cout &lt;&lt; &quot;[INFO] - Loading VINO Plugin...&quot; &lt;&lt; std::endl;
+    this-&gt;plugin= PluginDispatcher({ &quot;&quot;, &quot;../../../lib/intel64&quot; , &quot;&quot; }).getPluginByDevice(&quot;CPU&quot;);
+    this-&gt;plugin.AddExtension(std::make_shared&lt;Extensions::Cpu::CpuExtensions&gt;());
+    printPluginVersion(this-&gt;plugin, std::cout);
+</code></pre>
+<p><strong>OUTPUT :</strong></p>
+<pre><code>[INFO] - Loading VINO Plugin...
+000001A242280A18  // Like memory adress ???
+</code></pre>
+<p>Second Issue :</p>
+<p>When i try to extract my ROI and masks from New Code, if i have a &quot;match&quot;, i always have :</p>
+<ul>
+<li>score =1.0</li>
+<li>x1=x2=0.0</li>
+<li>y1=y2=1.0</li>
+</ul>
+<p>But the mask looks well extracted...</p>
+<p>New Code :</p>
+<pre><code>        float score = box_info[2];
+        if (score &gt; this-&gt;Conf_Threshold)
+        {
+            // On reconstruit les coordonnées de la box..
+            float x1 = std::min(std::max(0.0f, box_info[3] * Image.cols), static_cast&lt;float&gt;(Image.cols));
+            float y1 = std::min(std::max(0.0f, box_info[4] * Image.rows), static_cast&lt;float&gt;(Image.rows));
+            float x2 = std::min(std::max(0.0f, box_info[5] * Image.cols), static_cast&lt;float&gt;(Image.cols));
+            float y2 = std::min(std::max(0.0f, box_info[6] * Image.rows), static_cast&lt;float&gt;(Image.rows));
+            int box_width = std::min(static_cast&lt;int&gt;(std::max(0.0f, x2 - x1)), Image.cols);
+            int box_height = std::min(static_cast&lt;int&gt;(std::max(0.0f, y2 - y1)), Image.rows);
+</code></pre>
+<p><a href=""https://i.stack.imgur.com/bWjSx.jpg"" rel=""nofollow noreferrer""><img src=""https://i.stack.imgur.com/bWjSx.jpg"" alt=""Vino Mask"" /></a></p>
+<pre><code>Image is resized from (4288, 2848) to (800, 800)
+Detected class 62 with probability 1: [4288, 0], [4288, 0]
+</code></pre>
+<p>Then it is impossible for me to place the mask in the image and resize it while i don't have correct bbox coordinate...</p>
+<p>Do anybody have an idea about what i make badly ?</p>
+<p>How to create and link correctly an OpenVINO project using cpu_extension ?</p>
+<p>Thanks !</p>
+","<p>First issue with version: look above printPluginVersion function, you will see overloaded std::ostream operators for InferenceEngine and plugin version info.</p>
+
+<p>Second: You can try to debug your model by comparing output after very first convolution and output layer for original framework and OV. Make sure it's equal element by element.</p>
+
+<p>In OV you can use network.addOutput(""layer_name"") to add any layer to output. Then read output by using: const Blob::Ptr debug_blob = infer_request.GetBlob(""layer_name"").</p>
+
+<p>Most of the time with issues like this i finding missing of input pre-processing (mean, normalization, etc.)</p>
+
+<p>cpu_extensions is a dynamic library, but you still can change cmake script to make it static and link it with your application. After that you would need to use your application path with call to IExtensionPtr extension_ptr = make_so_pointer(argv[0])</p>
+","1365","0","1","<c++><opencv><inference-engine><openvino>"
+"56688591","How to add OpenVino setupvars.sh into PyCharm project?","2019-06-20 14:49:08","<p>I would like to add OpenVino setupvars.sh into a PyCharm project?</p>
+
+<p>I'm working on a project usig OpenVino and in order to use OpenVino right now I am using following bash script in .bashrc </p>
+
+<pre><code>source /opt/intel/openvino/bin/setupvars.sh
+
+</code></pre>
+
+<p>However, I would like to work on the project using PyCharm which make easier to handle the project as it gets bigger.</p>
+
+<p>How we can use OpenVino in a PyCharm project.</p>
+","<p>You can set this by pointing to the correct Python Interpreter in PyCharm. To get the current working Python environment, type the following lines of code in your local system.</p>
+
+<blockquote>
+  <p>python</p>
+</blockquote>
+
+<pre><code>&gt;&gt;&gt;import sys
+&gt;&gt;&gt; sys.executable
+&lt;PYTHON PATH&gt;
+</code></pre>
+
+<p>Make a note of this Python path and add it to File -> Settings -> Python Interpreter (In pycharm). </p>
+
+<p>Hope this helps!</p>
+","1326","3","4","<pycharm><openvino>"
+"56688591","How to add OpenVino setupvars.sh into PyCharm project?","2019-06-20 14:49:08","<p>I would like to add OpenVino setupvars.sh into a PyCharm project?</p>
+
+<p>I'm working on a project usig OpenVino and in order to use OpenVino right now I am using following bash script in .bashrc </p>
+
+<pre><code>source /opt/intel/openvino/bin/setupvars.sh
+
+</code></pre>
+
+<p>However, I would like to work on the project using PyCharm which make easier to handle the project as it gets bigger.</p>
+
+<p>How we can use OpenVino in a PyCharm project.</p>
+","<p>Work for me on Windows 10:
+Run CMD, then:</p>
+<blockquote>
+<p>&quot;\Program Files (x86)\IntelSWTools\openvino\bin\setupvars.bat&quot;</p>
+<p>&quot;C:\Program Files\JetBrains\PyCharm Community Edition 2019.2\bin\pycharm64.exe&quot;</p>
+</blockquote>
+<p>On macOS work too. Dont know about linux.</p>
+","1326","3","4","<pycharm><openvino>"
+"56688591","How to add OpenVino setupvars.sh into PyCharm project?","2019-06-20 14:49:08","<p>I would like to add OpenVino setupvars.sh into a PyCharm project?</p>
+
+<p>I'm working on a project usig OpenVino and in order to use OpenVino right now I am using following bash script in .bashrc </p>
+
+<pre><code>source /opt/intel/openvino/bin/setupvars.sh
+
+</code></pre>
+
+<p>However, I would like to work on the project using PyCharm which make easier to handle the project as it gets bigger.</p>
+
+<p>How we can use OpenVino in a PyCharm project.</p>
+","<p>Here is a solution for Ubuntu</p>
+
+<p>Add the setupvars.sh in bashrc file.
+Open terminal and write </p>
+
+<pre><code>gedit ~/.bashrc
+</code></pre>
+
+<p>Add these lines to the end of the file </p>
+
+<pre><code># &lt;&lt;&lt; Initialize Intel Vino environment variables &lt;&lt;&lt;
+source /opt/intel/openvino/bin/setupvars.sh
+# &lt;&lt;&lt; Initialize Intel Vino environment variables &lt;&lt;&lt;
+</code></pre>
+
+<p>Save and open new terminal, now the current terminal has loaded the environment variables. You can verify that if you see this line in the terminal </p>
+
+<pre><code>[setupvars.sh] OpenVINO environment initialized
+</code></pre>
+
+<p>Open pycharm from the terminal by executing </p>
+
+<pre><code>pycharm-community
+</code></pre>
+","1326","3","4","<pycharm><openvino>"
+"56688591","How to add OpenVino setupvars.sh into PyCharm project?","2019-06-20 14:49:08","<p>I would like to add OpenVino setupvars.sh into a PyCharm project?</p>
+
+<p>I'm working on a project usig OpenVino and in order to use OpenVino right now I am using following bash script in .bashrc </p>
+
+<pre><code>source /opt/intel/openvino/bin/setupvars.sh
+
+</code></pre>
+
+<p>However, I would like to work on the project using PyCharm which make easier to handle the project as it gets bigger.</p>
+
+<p>How we can use OpenVino in a PyCharm project.</p>
+","<p>I think we have met the same question.</p>
+<p>Here is my solution. Hope can help you :)</p>
+<h2>Make Your Own Interpreter File</h2>
+<ol>
+<li><p>Make a new file such as python-custom.</p>
+<pre><code> touch python-custom
+</code></pre>
+</li>
+<li><p>Open the file you just made.</p>
+<pre><code> vim python-custom
+</code></pre>
+</li>
+<li><p>Save the following code into the file.</p>
+<pre><code> #!/bin/bash
+
+ args=$@
+
+ # needed environment path
+ . /opt/intel/openvino/bin/setupvars.sh
+
+ # Path of your normal python path
+ # You can find it by &quot;which python&quot;, &quot;which python3&quot; or any python you used
+ /usr/bin/python3 $args
+</code></pre>
+</li>
+<li><p>Add executable permissions for it.</p>
+<pre><code> chmod +x python-custom
+</code></pre>
+</li>
+<li><p>Add a new interpreter in Pycharm.</p>
+<p>File -- Settings -- Project Interpreter</p>
+</li>
+<li><p>When you choose the interpreter, use &quot;/path/to/python-custom&quot; instead of &quot;/usr/bin/python3&quot;.</p>
+</li>
+</ol>
+","1326","3","4","<pycharm><openvino>"
+"60414356","PyInstaller: ModuleNotFoundError: No module named 'encodings'","2020-02-26 12:49:08","<p>I have a GUI application made using PySide2 and it some major modules it uses are OpenVino(2019), dlib, OpenCV-contrib(4.2.x) and Postgres(psycopg2) and I am trying to freeze the application using PyInstaller (--debug is True).</p>
+
+<p>The program gets frozen without errors but during execution, I get the following error:</p>
+
+<pre><code>Fatal Python error: initfsencoding: unable to load the file system codec
+ModuleNotFoundError: No module named 'encodings'
+</code></pre>
+
+<p>after which the application exits.</p>
+
+<p>I have tried many suggestions provided in other stackoverflow questions/github issues but none of them have worked.</p>
+
+<p>I have python version 3.7.6 but I have also tried with 3.6.8 (both local installation and after creating new venv in pycharm). I have tried different versions of pycharm as well(it shows som other errors below 3.5). I have tried pycharm 3.6 both develop branch and master branch.</p>
+
+<p>I have checked my PYTHONPATH and PYTHONHOME in env variables, they are pointing to python's location.</p>
+
+<p>I have modified my specfile to include the necessary binaries, files, imports and folders. I would share it if needed. Also any other logs during build or execution.</p>
+
+<p>I would like to know what I should do to solve this, wheather this issue is because of some component or is this a PyInstaller issue, and if so, should I raise it on github.</p>
+
+<p>My os is windows 10.</p>
+","<p>You changed the python version. So, you have to give a new path according to the Python version.
+Just remove all older version and the current one and reinstall new Python v.3.8.1</p>
+","1255","0","2","<python><python-3.x><opencv><pyinstaller><openvino>"
+"60414356","PyInstaller: ModuleNotFoundError: No module named 'encodings'","2020-02-26 12:49:08","<p>I have a GUI application made using PySide2 and it some major modules it uses are OpenVino(2019), dlib, OpenCV-contrib(4.2.x) and Postgres(psycopg2) and I am trying to freeze the application using PyInstaller (--debug is True).</p>
+
+<p>The program gets frozen without errors but during execution, I get the following error:</p>
+
+<pre><code>Fatal Python error: initfsencoding: unable to load the file system codec
+ModuleNotFoundError: No module named 'encodings'
+</code></pre>
+
+<p>after which the application exits.</p>
+
+<p>I have tried many suggestions provided in other stackoverflow questions/github issues but none of them have worked.</p>
+
+<p>I have python version 3.7.6 but I have also tried with 3.6.8 (both local installation and after creating new venv in pycharm). I have tried different versions of pycharm as well(it shows som other errors below 3.5). I have tried pycharm 3.6 both develop branch and master branch.</p>
+
+<p>I have checked my PYTHONPATH and PYTHONHOME in env variables, they are pointing to python's location.</p>
+
+<p>I have modified my specfile to include the necessary binaries, files, imports and folders. I would share it if needed. Also any other logs during build or execution.</p>
+
+<p>I would like to know what I should do to solve this, wheather this issue is because of some component or is this a PyInstaller issue, and if so, should I raise it on github.</p>
+
+<p>My os is windows 10.</p>
+","<p>You need to include base_library.zip in your application folder</p>
+","1255","0","2","<python><python-3.x><opencv><pyinstaller><openvino>"
+"56643774","How do I do async inference on OpenVino","2019-06-18 07:25:06","<p>I wrote a python server that uses an OpenVino network to run inference on incoming requests. In order to speed things up, I receive requests in multiple threads, and I would like to run the inferences concurrently.
+It seems that whatever I do, the times I get are the same as non-concurrent solutions - which makes me think I've missed something.</p>
+
+<p>I'm writing it in Python, using openvino 2019.1.144. I'm using multiple requests to the same plugin and network in order to try to make the inferences run concurrently.</p>
+
+<pre class=""lang-py prettyprint-override""><code>def __init__(self, num_of_requests: int = 4):
+   self._plugin = IEPlugin(""CPU"", plugin_dirs=None)
+   model_path = './Det/'
+   model_xml = os.path.join(model_path, ""ssh_graph.xml"")
+   model_bin = os.path.join(model_path, ""ssh_graph.bin"")
+   net = IENetwork(model=model_xml, weights=model_bin)
+   self._input_blob = next(iter(net.inputs))
+
+   # Load network to the plugin
+   self._exec_net = self._plugin.load(network=net, num_requests=num_of_requests)
+   del net
+
+def _async_runner(detect, images_subset, idx):
+    for img in images_subset:
+        request_handle = self._exec_net.start_async(request_id=idx, inputs={self._input_blob: img})
+        request_handle.wait()
+
+
+def run_async(images):  # These are the images to infer
+    det = Detector(num_of_requests=4)
+    multiplier = int(len(images)/4)
+    with ThreadPoolExecutor(4) as pool:
+        futures = []
+        for idx in range(0,3):
+            images_subset = images[idx*multiplier:(idx+1)*multiplier-1]
+            futures.append(pool.submit(_async_runner, det.detect, images_subset, idx))
+</code></pre>
+
+<p>When I run 800 inferences in sync mode, I get an avg. run time of 290ms
+When I run in async mode I get avg run time of 280ms.
+These are not substantial improvements. What am I doing wrong?</p>
+","<p>You can refer to a sample code from C:\Program Files (x86)\IntelSWTools\openvino_2019.1.144\inference_engine\samples\python_samples\object_detection_demo_ssd_async\object_detection_demo_ssd_async.py or similar samples from the python_samples directory to check the way async mode is addressed.</p>
+","1233","0","2","<python-multithreading><openvino>"
+"56643774","How do I do async inference on OpenVino","2019-06-18 07:25:06","<p>I wrote a python server that uses an OpenVino network to run inference on incoming requests. In order to speed things up, I receive requests in multiple threads, and I would like to run the inferences concurrently.
+It seems that whatever I do, the times I get are the same as non-concurrent solutions - which makes me think I've missed something.</p>
+
+<p>I'm writing it in Python, using openvino 2019.1.144. I'm using multiple requests to the same plugin and network in order to try to make the inferences run concurrently.</p>
+
+<pre class=""lang-py prettyprint-override""><code>def __init__(self, num_of_requests: int = 4):
+   self._plugin = IEPlugin(""CPU"", plugin_dirs=None)
+   model_path = './Det/'
+   model_xml = os.path.join(model_path, ""ssh_graph.xml"")
+   model_bin = os.path.join(model_path, ""ssh_graph.bin"")
+   net = IENetwork(model=model_xml, weights=model_bin)
+   self._input_blob = next(iter(net.inputs))
+
+   # Load network to the plugin
+   self._exec_net = self._plugin.load(network=net, num_requests=num_of_requests)
+   del net
+
+def _async_runner(detect, images_subset, idx):
+    for img in images_subset:
+        request_handle = self._exec_net.start_async(request_id=idx, inputs={self._input_blob: img})
+        request_handle.wait()
+
+
+def run_async(images):  # These are the images to infer
+    det = Detector(num_of_requests=4)
+    multiplier = int(len(images)/4)
+    with ThreadPoolExecutor(4) as pool:
+        futures = []
+        for idx in range(0,3):
+            images_subset = images[idx*multiplier:(idx+1)*multiplier-1]
+            futures.append(pool.submit(_async_runner, det.detect, images_subset, idx))
+</code></pre>
+
+<p>When I run 800 inferences in sync mode, I get an avg. run time of 290ms
+When I run in async mode I get avg run time of 280ms.
+These are not substantial improvements. What am I doing wrong?</p>
+","<p>If you use wait(), the execution thread blocks until the result is available. If you want to use a truly async mode, you will need wait(0) which does not block the execution. Just launch the inference whenever you need and store the request_id. Then, you can check if the results are available checking if the returned value of wait(0) is 0. Be careful not to use the same request_id while the IE is doing the inference, that will cause a collision and it'll raise an exception.</p>
+
+<p>However, in the code you provided, you cannot do this, because you are creating a thread pool in wich each thread executes inference of the image subset into a unique request_id. In fact, this is a parallel execution wich will give you a pretty fine performance, but it isn't ""async"" mode.</p>
+
+<p>A truly async mode would be something like this:</p>
+
+<pre><code>while still_items_to_infer():
+    get_item_to_infer()
+    get_unused_request_id()
+    launch_infer()
+    do_someting()
+    if results_available():
+        get_inference_results()
+        free_request_id()
+        #This may be in a new thread
+        process_inference_results()
+</code></pre>
+
+<p>This way, you are dispatching continuous inferences while waiting for them to finish.</p>
+","1233","0","2","<python-multithreading><openvino>"
+"58133127","OpenVINO Convert TF Model to IR file Issue","2019-09-27 10:55:54","<p>I'm trying to convert tensorflow model to OpenVINO IR files.
+I have downloaded a pre-trained model from the following address:</p>
+
+<blockquote>
+  <p><a href=""http://download.tensorflow.org/models/object_detection/mask_rcnn_inception_v2_coco_2018_01_28.tar.gz"" rel=""nofollow noreferrer"">http://download.tensorflow.org/models/object_detection/mask_rcnn_inception_v2_coco_2018_01_28.tar.gz</a></p>
+</blockquote>
+
+<p>Then I extracted the file to get a .pb file named ""frozen_inference_graph.pb""
+Then I used the conversion command in the OpenVINO folder </p>
+
+<blockquote>
+  <p>""IntelSWTools\openvino_2019.2.275\deployment_tools\model_optimizer\""</p>
+</blockquote>
+
+<p>as following:</p>
+
+<pre><code>python mo_tf.py --input_model frozen_inference_graph.pb
+</code></pre>
+
+<p>but I got following error message.
+How can I modify anything to solve this issue?</p>
+
+<pre><code>Model Optimizer arguments:
+Common parameters:
+    - Path to the Input Model:  &lt;my folder&gt;\frozen_inference_graph.pb
+    - Path for generated IR:    &lt;my OpenVINO folder&gt;\IntelSWTools\openvino_2019.2.275\deployment_tools\model_optimizer\.
+- IR output name:   frozen_inference_graph
+- Log level:    ERROR
+- Batch:    Not specified, inherited from the model
+- Input layers:     Not specified, inherited from the model
+- Output layers:    Not specified, inherited from the model
+- Input shapes:     Not specified, inherited from the model
+- Mean values:  Not specified
+- Scale values:     Not specified
+- Scale factor:     Not specified
+- Precision of IR:  FP32
+- Enable fusing:    True
+- Enable grouped convolutions fusing:   True
+- Move mean values to preprocess section:   False
+- Reverse input channels:   False
+TensorFlow specific parameters:
+- Input model in text protobuf format:  False
+- Path to model dump for TensorBoard:   None
+- List of shared libraries with TensorFlow custom layers implementation:    None
+- Update the configuration file with input/output node names:   None
+- Use configuration file used to generate the model with Object Detection API:  None
+- Operations to offload:    None
+- Patterns to offload:  None
+- Use the config file:  None
+Model Optimizer version:    2019.2.0-436-gf5827d4
+
+C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python36_64\lib\site-packages\tensorflow\python\framework\dtypes.py:458: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+_np_qint8 = np.dtype([(""qint8"", np.int8, 1)])
+
+[ ERROR ]  Shape [-1 -1 -1  3] is not fully defined for output 0 of ""image_tensor"". Use --input_shape with positive integers to override model input shapes.
+[ ERROR ]  Cannot infer shapes or values for node ""image_tensor"".
+[ ERROR ]  Not all output shapes were inferred or fully defined for node ""image_tensor"".  For more information please refer to Model Optimizer FAQ (https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_Model_Optimizer_FAQ.html), question #40. 
+[ ERROR ]  
+[ ERROR ]  It can happen due to bug in custom shape infer function &lt;function Parameter.__init__.&lt;locals&gt;.&lt;lambda&gt; at 0x000002032A17D378&gt;.
+[ ERROR ]  Or because the node inputs have incorrect values/shapes.
+[ ERROR ]  Or because input shapes are incorrect (embedded to the model or passed via --input_shape).
+[ ERROR ]  Run Model Optimizer with --log_level=DEBUG for more information.
+[ ERROR ]  Exception occurred during running replacer ""REPLACEMENT_ID"" (&lt;class 'extensions.middle.PartialInfer.PartialInfer'&gt;): Stopped shape/value propagation at ""image_tensor"" node. 
+For more information please refer to Model Optimizer FAQ (https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_Model_Optimizer_FAQ.html), question #38. 
+
+Process finished with exit code 1
+</code></pre>
+
+<p>I have tried many other tensorflow models but all have the same issue.
+I used different tensorflow version from <strong>1.2.0</strong> to <strong>1.14.0</strong> but the same.</p>
+
+<p>The key word about the shape seems to be the main cause. but how can I add something to avoid this issue?</p>
+
+<pre><code>Shape [-1 -1 -1  3] is not fully defined for output 0 of ""image_tensor"". Use --input_shape with positive integers to override model input shapes.
+</code></pre>
+
+<p>I hope the IR file can be generated correctly.</p>
+","<p>Openvino model optimizer (mo_tf.py) expects more arguments. Please pass the below as well.</p>
+
+<p>python mo_tf.py --output_dir &lt;\PATH> --input_model &lt;\PATH>\mask_rcnn_inception_v2_coco_2018_01_28\frozen_inference_graph.pb  --tensorflow_use_custom_operations_config extensions\front\tf\mask_rcnn_support.json --tensorflow_object_detection_api_pipeline_config &lt;\PATH>\mask_rcnn_inception_v2_coco_2018_01_28\pipeline.config </p>
+
+<p>mask_rcnn_inception_v2_coco model can be downloaded from <a href=""https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md"" rel=""nofollow noreferrer"">https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md</a></p>
+
+<p>For more details refer : <a href=""https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_Convert_Model_From_TensorFlow.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_Convert_Model_From_TensorFlow.html</a></p>
+","1173","4","1","<openvino>"
+"54478463","How to permanently set the environment variables for OpenVino","2019-02-01 11:20:12","<p>I am setting up OpenVino on my system and I get this form the <a href=""https://software.intel.com/en-us/articles/OpenVINO-Install-Windows#next-steps"" rel=""nofollow noreferrer"">documentation</a>:</p>
+
+<blockquote>
+  <p>(Optional): OpenVINO toolkit environment variables are removed when you close the Command Prompt window. As an option, you can permanently set the environment variables manually.</p>
+</blockquote>
+
+<p>But there is no information is available on what are the required environment variables and what value they should be set. </p>
+
+<p>I need to know the list of environmental variable needed by OpenVino and the value that they should be set to. I know how to set them in Windows (using GUI or Setx).</p>
+","<p>The environment variables need to be set are given in the setupvars.bat file present at ""path_to_computer_vision_sdk_directory\bin"". </p>
+
+<p>But I will give a general idea on the paths that need to be set - 
+Set the following <strong>System variables</strong> in your Environment Variables</p>
+
+<ol>
+<li><p>Variable name: <em>INTEL_CVSDK_DIR</em>
+Variable value: <em>path_to_computer_vision_sdk_directory</em> i.e. 
+<em>C:\Intel\computer_vision_sdk_version_number</em>, in case you have the cvsdk setup at the default path for installation</p></li>
+<li><p>Variable name: <em>OpenCV_DIR</em>
+Variable value: <em>%INTEL_CVSDK_DIR%\opencv\cmake</em></p></li>
+<li><p>Variable name: <em>OPENVX_FOLDER</em> 
+Variable value: <em>%INTEL_CVSDK_DIR%\openvx</em></p></li>
+<li><p>Variable name: <em>InferenceEngine_DIR</em>
+Variable value: <em>%INTEL_CVSDK_DIR%\deployment_tools\inference_engine\share</em></p></li>
+<li><p>Variable name: <em>HDDL_INSTALL_DIR</em>
+Variable value: <em>%INTEL_CVSDK_DIR%\deployment_tools\inference_engine\external\hddl</em></p></li>
+<li><p>Now edit the ""<em>Path</em>"" variable under System Variables to include the following values - 
+<em>%INTEL_CVSDK_DIR%\opencv\x64\vc14\bin
+%INTEL_CVSDK_DIR%\openvx\bin
+%INTEL_CVSDK_DIR%\deployment_tools\inference_engine\bin\intel64\Release
+%INTEL_CVSDK_DIR%\deployment_tools\inference_engine\bin\intel64\Debug
+%HDDL_INSTALL_DIR%\bin</em></p></li>
+</ol>
+
+<p>You also nee to set the ""<em>PYTHONPATH</em>"" to <em>%INTEL_CVSDK_DIR%\python\python_version%</em></p>
+","1161","1","1","<openvino>"
+"62277098","Use openvino from docker","2020-06-09 07:19:22","<p>I am trying to use OpenVINO from docker container. 
+I use docker file from official web site <a href=""https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_docker_linux.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_docs_install_guides_installing_openvino_docker_linux.html</a></p>
+
+<pre><code>FROM ubuntu:18.04
+USER root
+WORKDIR /
+SHELL [""/bin/bash"", ""-xo"", ""pipefail"", ""-c""]
+# Creating user openvino
+RUN useradd -ms /bin/bash openvino &amp;&amp; \
+    chown openvino -R /home/openvino
+ARG DEPENDENCIES=""autoconf \
+                  automake \
+                  build-essential \
+                  cmake \
+                  cpio \
+                  curl \
+                  gnupg2 \
+                  libdrm2 \
+                  libglib2.0-0 \
+                  lsb-release \
+                  libgtk-3-0 \
+                  libtool \
+                  udev \
+                  unzip \
+                  dos2unix""
+RUN apt-get update &amp;&amp; \
+    apt-get install -y --no-install-recommends ${DEPENDENCIES} &amp;&amp; \
+    rm -rf /var/lib/apt/lists/*
+WORKDIR /thirdparty
+RUN sed -Ei 's/# deb-src /deb-src /' /etc/apt/sources.list &amp;&amp; \
+    apt-get update &amp;&amp; \
+    apt-get source ${DEPENDENCIES} &amp;&amp; \
+    rm -rf /var/lib/apt/lists/*
+# setup Python
+ENV PYTHON python3.6
+RUN apt-get update &amp;&amp; \
+    apt-get install -y --no-install-recommends python3-pip python3-dev lib${PYTHON}=3.6.9-1~18.04 &amp;&amp; \
+    rm -rf /var/lib/apt/lists/*
+ARG package_url=ARG package_url=http://registrationcenter-download.intel.com/akdlm/irc_nas/16612/l_openvino_toolkit_p_2020.2.120.tgz
+ARG TEMP_DIR=/tmp/openvino_installer
+WORKDIR ${TEMP_DIR}
+ADD ${package_url} ${TEMP_DIR}
+# install product by installation script
+ENV INTEL_OPENVINO_DIR /opt/intel/openvino
+RUN tar -xzf ${TEMP_DIR}/*.tgz --strip 1
+RUN sed -i 's/decline/accept/g' silent.cfg &amp;&amp; \
+    ${TEMP_DIR}/install.sh -s silent.cfg &amp;&amp; \
+    ${INTEL_OPENVINO_DIR}/install_dependencies/install_openvino_dependencies.sh
+WORKDIR /tmp
+RUN rm -rf ${TEMP_DIR}
+# installing dependencies for package
+WORKDIR /tmp
+RUN ${PYTHON} -m pip install --no-cache-dir setuptools &amp;&amp; \
+    find ""${INTEL_OPENVINO_DIR}/"" -type f -name ""*requirements*.*"" -path ""*/${PYTHON}/*"" -exec ${PYTHON} -m pip install --no-cache-dir -r ""{}"" \; &amp;&amp; \
+    find ""${INTEL_OPENVINO_DIR}/"" -type f -name ""*requirements*.*"" -not -path ""*/post_training_optimization_toolkit/*"" -not -name ""*windows.txt""  -not -name ""*ubuntu16.txt"" -not -path ""*/python3*/*"" -not -path ""*/python2*/*"" -exec ${PYTHON} -m pip install --no-cache-dir -r ""{}"" \;
+WORKDIR ${INTEL_OPENVINO_DIR}/deployment_tools/open_model_zoo/tools/accuracy_checker
+RUN source ${INTEL_OPENVINO_DIR}/bin/setupvars.sh &amp;&amp; \
+    ${PYTHON} -m pip install --no-cache-dir -r ${INTEL_OPENVINO_DIR}/deployment_tools/open_model_zoo/tools/accuracy_checker/requirements.in &amp;&amp; \
+    ${PYTHON} ${INTEL_OPENVINO_DIR}/deployment_tools/open_model_zoo/tools/accuracy_checker/setup.py install
+WORKDIR ${INTEL_OPENVINO_DIR}/deployment_tools/tools/post_training_optimization_toolkit
+RUN if [ -f requirements.txt ]; then \
+        ${PYTHON} -m pip install --no-cache-dir -r ${INTEL_OPENVINO_DIR}/deployment_tools/tools/post_training_optimization_toolkit/requirements.txt &amp;&amp; \
+        ${PYTHON} ${INTEL_OPENVINO_DIR}/deployment_tools/tools/post_training_optimization_toolkit/setup.py install; \
+    fi;
+# Post-installation cleanup and setting up OpenVINO environment variables
+RUN if [ -f ""${INTEL_OPENVINO_DIR}""/bin/setupvars.sh ]; then \
+        printf ""\nsource \${INTEL_OPENVINO_DIR}/bin/setupvars.sh\n"" &gt;&gt; /home/openvino/.bashrc; \
+        printf ""\nsource \${INTEL_OPENVINO_DIR}/bin/setupvars.sh\n"" &gt;&gt; /root/.bashrc; \
+    fi;
+RUN find ""${INTEL_OPENVINO_DIR}/"" -name ""*.*sh"" -type f -exec dos2unix {} \;
+USER openvino
+WORKDIR ${INTEL_OPENVINO_DIR}
+CMD [""/bin/bash""]
+</code></pre>
+
+<p>But if I try to launch python program with this line:</p>
+
+<pre><code>from openvino.inference_engine import IECore
+</code></pre>
+
+<p>It writes ModuleNotFoundError, No module named 'openvino'. I tried to source file setupvars.sh with these commands, but it doesn't help. </p>
+
+<pre><code>RUN /bin/bash -c ""source /opt/intel/openvino/bin/setupvars.sh""
+RUN source /opt/intel/openvino/bin/setupvars.sh
+</code></pre>
+
+<p>What should I do to use openvino python apps from docker? </p>
+","<p>If you are building the Docker image, and trying to run the OpenVINO Python apps outside the docker image it won't work. You can create the Docker image and run Docker image interactively to execute the Python apps within the image. Refer to <a href=""https://docs.docker.com/engine/reference/run/"" rel=""noreferrer"">https://docs.docker.com/engine/reference/run/</a> for more information on <code>docker run</code>.
+<br/><br/>
+Couple of issues noticed in your Dockerfile when used in my environment. After the changes and steps below, you should be able to import <em>openvino</em> module and run a Python application:
+<br/><br/>
+In Dockerfile line #34:</p>
+
+<pre><code>// Before:
+apt-get install -y --no-install-recommends python3-pip python3-dev lib${PYTHON}=3.6.9-1~18.04 &amp;&amp; \
+// After:
+apt-get install -y --no-install-recommends python3-pip python3-dev lib${PYTHON} &amp;&amp; \
+</code></pre>
+
+<p><br/>
+In Dockerfile line #36:</p>
+
+<pre><code>// Before:    
+ARG package_url=ARG package_url=http://registrationcenter-download.intel.com/akdlm/irc_nas/16612/l_openvino_toolkit_p_2020.2.120.tgz
+// After:   
+ARG package_url=http://registrationcenter-download.intel.com/akdlm/irc_nas/16612/l_openvino_toolkit_p_2020.2.120.tgz
+</code></pre>
+
+<p><br/>
+After the changes above, run <code>docker build . -t &lt;image-name&gt;</code> (i.e. <em>docker build . -t openvino-ubuntu</em>) to build Docker image. If successful you would see <code>Successfully built bf2280a70ffd Successfully tagged openvino-&lt;image-name&gt;:latest</code>.
+<br/><br/>
+Then run image interactively with <code>docker run -it &lt;image_name&gt;</code> (i.e. <em>docker run -it openvino-ubuntu</em>). You would see something similar to:</p>
+
+<pre><code>[setupvars.sh] OpenVINO environment initialized
+openvino@ce618ea2bc47:/opt/intel/openvino_2020.2.120$
+</code></pre>
+
+<p><br/>
+To verify Python is able to import <em>IECore</em> from <em>openvino</em> module, test with Python interpreter:</p>
+
+<pre><code>openvino@ce618ea2bc47:/opt/intel/openvino_2020.2.120$ python3
+Python 3.6.9 (default, Apr 18 2020, 01:56:04) 
+[GCC 8.4.0] on linux
+Type ""help"", ""copyright"", ""credits"" or ""license"" for more information.
+&gt;&gt;&gt; from openvino.inference_engine import IECore
+&gt;&gt;&gt;    
+</code></pre>
+
+<p><br/>
+To run OpenVINO Python app, test one of the sample apps in <em>/opt/intel/openvino/deployment_tools/inference_engine/samples/python</em>, for example <em>object_detection_sample_ssd.py</em>:</p>
+
+<pre><code>openvino@ce618ea2bc47:/opt/intel/openvino_2020.2.120$ python3 /opt/intel/openvino/deployment_tools/inference_engine/samples/python/object_detection_sample_ssd/object_detection_sample_ssd.py
+
+usage: object_detection_sample_ssd.py [-h] -m MODEL -i INPUT [INPUT ...]
+                                  [-l CPU_EXTENSION] [-d DEVICE]
+                                  [--labels LABELS] [-nt NUMBER_TOP]
+object_detection_sample_ssd.py: error: the following arguments are required: -m/--model, -i/--input
+</code></pre>
+","1148","1","1","<docker><openvino>"
+"59725646","OpenVINO - Inference library plugin libMKLDNNPlugin.so cannot resolve dependency","2020-01-13 23:28:13","<p>I am experimenting with OpenVINO APIs and below is the sample code snippet:</p>
+
+<pre><code>plugin = InferenceEngine::PluginDispatcher(&lt;params&gt;).getPluginByDevice(""CPU"");
+</code></pre>
+
+<p>However, I get the below error:</p>
+
+<pre><code>Cannot find plugin to use :Tried load plugin : MKLDNNPlugin,  error: Plugin MKLDNNPlugin cannot be loaded: cannot load plugin: MKLDNNPlugin from /opt/intel/openvino_2019.3.376/inference_engine/lib/intel64: Cannot load library '/opt/intel/openvino_2019.3.376/inference_engine/lib/intel64/libMKLDNNPlugin.so': libmkl_tiny_tbb.so: cannot open shared object file: No such file or directory
+</code></pre>
+
+<p>I looked for the above missing library and it actually exists:</p>
+
+<pre><code>$ ls /opt/intel/openvino_2019.3.376/inference_engine/external/mkltiny_lnx/lib/
+libmkl_tiny_tbb.so
+</code></pre>
+
+<p>It looks like some internal dependency is not resolved by inference engine lib/plugin. Could anyone help figure out why it doesn't work? </p>
+","<p>Add/Update this path</p>
+
+<pre><code>/opt/intel/openvino_2019.3.376/inference_engine/external/mkltiny_lnx/lib/
+libmkl_tiny_tbb.so
+</code></pre>
+
+<p>into </p>
+
+<blockquote>
+  <p>LD_LIBRARY_PATH</p>
+</blockquote>
+","1046","0","2","<c++><openvino>"
+"59725646","OpenVINO - Inference library plugin libMKLDNNPlugin.so cannot resolve dependency","2020-01-13 23:28:13","<p>I am experimenting with OpenVINO APIs and below is the sample code snippet:</p>
+
+<pre><code>plugin = InferenceEngine::PluginDispatcher(&lt;params&gt;).getPluginByDevice(""CPU"");
+</code></pre>
+
+<p>However, I get the below error:</p>
+
+<pre><code>Cannot find plugin to use :Tried load plugin : MKLDNNPlugin,  error: Plugin MKLDNNPlugin cannot be loaded: cannot load plugin: MKLDNNPlugin from /opt/intel/openvino_2019.3.376/inference_engine/lib/intel64: Cannot load library '/opt/intel/openvino_2019.3.376/inference_engine/lib/intel64/libMKLDNNPlugin.so': libmkl_tiny_tbb.so: cannot open shared object file: No such file or directory
+</code></pre>
+
+<p>I looked for the above missing library and it actually exists:</p>
+
+<pre><code>$ ls /opt/intel/openvino_2019.3.376/inference_engine/external/mkltiny_lnx/lib/
+libmkl_tiny_tbb.so
+</code></pre>
+
+<p>It looks like some internal dependency is not resolved by inference engine lib/plugin. Could anyone help figure out why it doesn't work? </p>
+","<p>Run a script <code>setupvars.sh</code> before you run your program. The script resolves all dependencies needed for running OpenVINO applications.</p>
+
+<p>The script located in <code>&lt;openvino-install-dir&gt;/bin/setupvars.sh</code></p>
+","1046","0","2","<c++><openvino>"
+"65898876","VCRUNTIME140_1D error in debug mode with visual studio","2021-01-26 09:34:49","<p>Hello when im runing visual studio 2017 on debug mode I got this error VCRUNTIME140_1D.dll was not found, I tried to install again visual studio 17 and redistributed c++ 17 but nothing. I check system32 and i cant find this file also there</p>
+","<p>It seems like you are missing the cvruntime140_1D.dll file from your computer. You have to reinstall redistributable c++ and you can find the dll in the system folder.</p>
+","1030","1","2","<openvino>"
+"65898876","VCRUNTIME140_1D error in debug mode with visual studio","2021-01-26 09:34:49","<p>Hello when im runing visual studio 2017 on debug mode I got this error VCRUNTIME140_1D.dll was not found, I tried to install again visual studio 17 and redistributed c++ 17 but nothing. I check system32 and i cant find this file also there</p>
+","<p>Thanks for ur answer
+I found the solution, the problem is that thi sdll vcruntime140_1d.dll is a special dll for VS19. u can find it in MVSC in install directory for your VS19. and is VS17 doesnt have the same version. sso install VS19 INSTEAD OF 17.</p>
+","1030","1","2","<openvino>"
+"57145603","tensorflow openvino ssd-mobilnet coco custom dataset error input layer","2019-07-22 12:00:19","<p>So, I'm using TensorFlow SSD-Mobilnet V1 coco dataset. That I have further trained on my own dataset but when I try to convert it to OpenVino IR to run it on Raspberry PI with Movidius Chip. I get an error</p>
+
+<pre class=""lang-py prettyprint-override""><code>➜  utils sudo python3 summarize_graph.py --input_model ssd.pb 
+WARNING: Logging before flag parsing goes to stderr.
+W0722 17:17:05.565755 4678620608 __init__.py:308] Limited tf.compat.v2.summary API due to missing TensorBoard installation.
+W0722 17:17:06.696880 4678620608 deprecation_wrapper.py:119] From ../../mo/front/tf/loader.py:35: The name tf.GraphDef is deprecated. Please use tf.compat.v1.GraphDef instead.
+
+W0722 17:17:06.697348 4678620608 deprecation_wrapper.py:119] From ../../mo/front/tf/loader.py:109: The name tf.MetaGraphDef is deprecated. Please use tf.compat.v1.MetaGraphDef instead.
+
+W0722 17:17:06.697680 4678620608 deprecation_wrapper.py:119] From ../../mo/front/tf/loader.py:235: The name tf.NodeDef is deprecated. Please use tf.compat.v1.NodeDef instead.
+
+1 input(s) detected:
+Name: image_tensor, type: uint8, shape: (-1,-1,-1,3)
+7 output(s) detected:
+detection_boxes
+detection_scores
+detection_multiclass_scores
+detection_classes
+num_detections
+raw_detection_boxes
+raw_detection_scores
+</code></pre>
+
+<p>When I try to convert the ssd.pb(frozen model) to OpenVino IR </p>
+
+<pre class=""lang-py prettyprint-override""><code>➜  model_optimizer sudo python3 mo_tf.py --input_model ssd.pb          
+Password:
+Model Optimizer arguments:
+Common parameters:
+    - Path to the Input Model:  /opt/intel/openvino_2019.1.144/deployment_tools/model_optimizer/ssd.pb
+    - Path for generated IR:    /opt/intel/openvino_2019.1.144/deployment_tools/model_optimizer/.
+    - IR output name:   ssd
+    - Log level:    ERROR
+    - Batch:    Not specified, inherited from the model
+    - Input layers:     Not specified, inherited from the model
+    - Output layers:    Not specified, inherited from the model
+    - Input shapes:     Not specified, inherited from the model
+    - Mean values:  Not specified
+    - Scale values:     Not specified
+    - Scale factor:     Not specified
+    - Precision of IR:  FP32
+    - Enable fusing:    True
+    - Enable grouped convolutions fusing:   True
+    - Move mean values to preprocess section:   False
+    - Reverse input channels:   False
+TensorFlow specific parameters:
+    - Input model in text protobuf format:  False
+    - Path to model dump for TensorBoard:   None
+    - List of shared libraries with TensorFlow custom layers implementation:    None
+    - Update the configuration file with input/output node names:   None
+    - Use configuration file used to generate the model with Object Detection API:  None
+    - Operations to offload:    None
+    - Patterns to offload:  None
+    - Use the config file:  None
+Model Optimizer version:    2019.1.1-83-g28dfbfd
+WARNING: Logging before flag parsing goes to stderr.
+E0722 17:24:22.964164 4474824128 infer.py:158] Shape [-1 -1 -1  3] is not fully defined for output 0 of ""image_tensor"". Use --input_shape with positive integers to override model input shapes.
+E0722 17:24:22.964462 4474824128 infer.py:178] Cannot infer shapes or values for node ""image_tensor"".
+E0722 17:24:22.964554 4474824128 infer.py:179] Not all output shapes were inferred or fully defined for node ""image_tensor"". 
+ For more information please refer to Model Optimizer FAQ (&lt;INSTALL_DIR&gt;/deployment_tools/documentation/docs/MO_FAQ.html), question #40. 
+E0722 17:24:22.964632 4474824128 infer.py:180] 
+E0722 17:24:22.964720 4474824128 infer.py:181] It can happen due to bug in custom shape infer function &lt;function tf_placeholder_ext.&lt;locals&gt;.&lt;lambda&gt; at 0x12ab64bf8&gt;.
+E0722 17:24:22.964787 4474824128 infer.py:182] Or because the node inputs have incorrect values/shapes.
+E0722 17:24:22.964850 4474824128 infer.py:183] Or because input shapes are incorrect (embedded to the model or passed via --input_shape).
+E0722 17:24:22.965915 4474824128 infer.py:192] Run Model Optimizer with --log_level=DEBUG for more information.
+E0722 17:24:22.966033 4474824128 main.py:317] Exception occurred during running replacer ""REPLACEMENT_ID"" (&lt;class 'extensions.middle.PartialInfer.PartialInfer'&gt;): Stopped shape/value propagation at ""image_tensor"" node. 
+ For more information please refer to Model Optimizer FAQ (&lt;INSTALL_DIR&gt;/deployment_tools/documentation/docs/MO_FAQ.html), question #38.
+</code></pre>
+
+<p>How do you think we should fix this?</p>
+","<p>When you try to convert ssd.pb(your frozen model), you are passing only the input model parameter to mo_tf.py scripts. To convert an object detection model to IR, go
+to the model optimizer directory, run the mo_tf.py script with the following required parameters:</p>
+
+<p>--input_model  :<br>
+              File with a pre-trained model (binary or text .pb file after freezing)</p>
+
+<p>--tensorflow_use_custom_operations_config    : 
+              Configuration file that describes rules to convert specific TensorFlow* topologies. 
+              For the models downloaded from the TensorFlow* Object Detection API zoo, you can find the configuration files in the /deployment_tools/model_optimizer/extensions/front/tf directory
+              You can use ssd_v2_support.json / ssd_support.json — for frozen SSD topologies from the models zoo. It will be available in the above mentioned directory.</p>
+
+<p>--tensorflow_object_detection_api_pipeline_config  :
+              A special configuration file that describes the topology hyper-parameters and structure of the TensorFlow Object Detection API model.
+              For the models downloaded from the TensorFlow* Object Detection API zoo, the configuration file is named pipeline.config. 
+              If you plan to train a model yourself, you can find templates for these files in the models repository</p>
+
+<p>--input_shape(optional):
+              A custom input image shape, we need to pass these values based on the pretrained model you used.
+              The model takes input image in the format [1 H W C], Where the parameter refers to the batch size, height, width, channel respectively.
+              Model Optimizer does not accept negative values for batch, height, width and channel number.
+              So, you need to pass a valid set of 4 positive numbers using --input_shape parameter, if input image dimensions of the model(SSD mobilenet) is known in advance.<br>
+              If it is not available, you don't need to pass input shape.</p>
+
+<p>An example mo_tf.py command which uses the model SSD-MobileNet-v2-COCO downloaded from model downloader comes up with openvino is shown below.</p>
+
+<pre><code>python mo_tf.py  
+              --input_model ""c:\Program Files (x86)\IntelSWTools\openvino_2019.1.087\deployment_tools\tools\model_downloader\object_detection\common\ssd_mobilenet_v2_coco\tf\ssd_mobilenet_v2_coco.frozen.pb"" 
+              --tensorflow_use_custom_operations_config  ""c:\Program Files (x86)\IntelSWTools\openvino_2019.1.087\deployment_tools\model_optimizer\extensions\front\tf\ssd_v2_support.json""  
+              --tensorflow_object_detection_api_pipeline_config  ""c:\Program Files (x86)\IntelSWTools\openvino_2019.1.087\deployment_tools\tools\model_downloader\object_detection\common\ssd_mobilenet_v2_coco\tf\ssd_mobilenet_v2_coco.config"" 
+              --data_type FP16 
+              --log_level DEBUG
+</code></pre>
+
+<p>For more details, refer to the link  <a href=""https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_tf_specific_Convert_Object_Detection_API_Models.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_tf_specific_Convert_Object_Detection_API_Models.html</a><br>
+Hope it helps.</p>
+","981","0","3","<python-3.x><tensorflow><raspberry-pi><openvino><movidius>"
+"57145603","tensorflow openvino ssd-mobilnet coco custom dataset error input layer","2019-07-22 12:00:19","<p>So, I'm using TensorFlow SSD-Mobilnet V1 coco dataset. That I have further trained on my own dataset but when I try to convert it to OpenVino IR to run it on Raspberry PI with Movidius Chip. I get an error</p>
+
+<pre class=""lang-py prettyprint-override""><code>➜  utils sudo python3 summarize_graph.py --input_model ssd.pb 
+WARNING: Logging before flag parsing goes to stderr.
+W0722 17:17:05.565755 4678620608 __init__.py:308] Limited tf.compat.v2.summary API due to missing TensorBoard installation.
+W0722 17:17:06.696880 4678620608 deprecation_wrapper.py:119] From ../../mo/front/tf/loader.py:35: The name tf.GraphDef is deprecated. Please use tf.compat.v1.GraphDef instead.
+
+W0722 17:17:06.697348 4678620608 deprecation_wrapper.py:119] From ../../mo/front/tf/loader.py:109: The name tf.MetaGraphDef is deprecated. Please use tf.compat.v1.MetaGraphDef instead.
+
+W0722 17:17:06.697680 4678620608 deprecation_wrapper.py:119] From ../../mo/front/tf/loader.py:235: The name tf.NodeDef is deprecated. Please use tf.compat.v1.NodeDef instead.
+
+1 input(s) detected:
+Name: image_tensor, type: uint8, shape: (-1,-1,-1,3)
+7 output(s) detected:
+detection_boxes
+detection_scores
+detection_multiclass_scores
+detection_classes
+num_detections
+raw_detection_boxes
+raw_detection_scores
+</code></pre>
+
+<p>When I try to convert the ssd.pb(frozen model) to OpenVino IR </p>
+
+<pre class=""lang-py prettyprint-override""><code>➜  model_optimizer sudo python3 mo_tf.py --input_model ssd.pb          
+Password:
+Model Optimizer arguments:
+Common parameters:
+    - Path to the Input Model:  /opt/intel/openvino_2019.1.144/deployment_tools/model_optimizer/ssd.pb
+    - Path for generated IR:    /opt/intel/openvino_2019.1.144/deployment_tools/model_optimizer/.
+    - IR output name:   ssd
+    - Log level:    ERROR
+    - Batch:    Not specified, inherited from the model
+    - Input layers:     Not specified, inherited from the model
+    - Output layers:    Not specified, inherited from the model
+    - Input shapes:     Not specified, inherited from the model
+    - Mean values:  Not specified
+    - Scale values:     Not specified
+    - Scale factor:     Not specified
+    - Precision of IR:  FP32
+    - Enable fusing:    True
+    - Enable grouped convolutions fusing:   True
+    - Move mean values to preprocess section:   False
+    - Reverse input channels:   False
+TensorFlow specific parameters:
+    - Input model in text protobuf format:  False
+    - Path to model dump for TensorBoard:   None
+    - List of shared libraries with TensorFlow custom layers implementation:    None
+    - Update the configuration file with input/output node names:   None
+    - Use configuration file used to generate the model with Object Detection API:  None
+    - Operations to offload:    None
+    - Patterns to offload:  None
+    - Use the config file:  None
+Model Optimizer version:    2019.1.1-83-g28dfbfd
+WARNING: Logging before flag parsing goes to stderr.
+E0722 17:24:22.964164 4474824128 infer.py:158] Shape [-1 -1 -1  3] is not fully defined for output 0 of ""image_tensor"". Use --input_shape with positive integers to override model input shapes.
+E0722 17:24:22.964462 4474824128 infer.py:178] Cannot infer shapes or values for node ""image_tensor"".
+E0722 17:24:22.964554 4474824128 infer.py:179] Not all output shapes were inferred or fully defined for node ""image_tensor"". 
+ For more information please refer to Model Optimizer FAQ (&lt;INSTALL_DIR&gt;/deployment_tools/documentation/docs/MO_FAQ.html), question #40. 
+E0722 17:24:22.964632 4474824128 infer.py:180] 
+E0722 17:24:22.964720 4474824128 infer.py:181] It can happen due to bug in custom shape infer function &lt;function tf_placeholder_ext.&lt;locals&gt;.&lt;lambda&gt; at 0x12ab64bf8&gt;.
+E0722 17:24:22.964787 4474824128 infer.py:182] Or because the node inputs have incorrect values/shapes.
+E0722 17:24:22.964850 4474824128 infer.py:183] Or because input shapes are incorrect (embedded to the model or passed via --input_shape).
+E0722 17:24:22.965915 4474824128 infer.py:192] Run Model Optimizer with --log_level=DEBUG for more information.
+E0722 17:24:22.966033 4474824128 main.py:317] Exception occurred during running replacer ""REPLACEMENT_ID"" (&lt;class 'extensions.middle.PartialInfer.PartialInfer'&gt;): Stopped shape/value propagation at ""image_tensor"" node. 
+ For more information please refer to Model Optimizer FAQ (&lt;INSTALL_DIR&gt;/deployment_tools/documentation/docs/MO_FAQ.html), question #38.
+</code></pre>
+
+<p>How do you think we should fix this?</p>
+","<p>I updated my OpenVINO to OpenVINO toolkit R2 2019 &amp; using the below command I was able to generate IR file</p>
+
+<pre><code>python3 ~/intel/openvino/deployment_tools/model_optimizer/mo_tf.py --input_model frozen_inference_graph.pb --tensorflow_use_custom_operations_config ~/intel/openvino/deployment_tools/model_optimizer/extension/front/tf/ssd_support_api_v1.14.json --tensorflow_object_detection_api_pipeline_config pipeline.config -b 1 --data_type FP16 --reverse_input_channels
+</code></pre>
+","981","0","3","<python-3.x><tensorflow><raspberry-pi><openvino><movidius>"
+"57145603","tensorflow openvino ssd-mobilnet coco custom dataset error input layer","2019-07-22 12:00:19","<p>So, I'm using TensorFlow SSD-Mobilnet V1 coco dataset. That I have further trained on my own dataset but when I try to convert it to OpenVino IR to run it on Raspberry PI with Movidius Chip. I get an error</p>
+
+<pre class=""lang-py prettyprint-override""><code>➜  utils sudo python3 summarize_graph.py --input_model ssd.pb 
+WARNING: Logging before flag parsing goes to stderr.
+W0722 17:17:05.565755 4678620608 __init__.py:308] Limited tf.compat.v2.summary API due to missing TensorBoard installation.
+W0722 17:17:06.696880 4678620608 deprecation_wrapper.py:119] From ../../mo/front/tf/loader.py:35: The name tf.GraphDef is deprecated. Please use tf.compat.v1.GraphDef instead.
+
+W0722 17:17:06.697348 4678620608 deprecation_wrapper.py:119] From ../../mo/front/tf/loader.py:109: The name tf.MetaGraphDef is deprecated. Please use tf.compat.v1.MetaGraphDef instead.
+
+W0722 17:17:06.697680 4678620608 deprecation_wrapper.py:119] From ../../mo/front/tf/loader.py:235: The name tf.NodeDef is deprecated. Please use tf.compat.v1.NodeDef instead.
+
+1 input(s) detected:
+Name: image_tensor, type: uint8, shape: (-1,-1,-1,3)
+7 output(s) detected:
+detection_boxes
+detection_scores
+detection_multiclass_scores
+detection_classes
+num_detections
+raw_detection_boxes
+raw_detection_scores
+</code></pre>
+
+<p>When I try to convert the ssd.pb(frozen model) to OpenVino IR </p>
+
+<pre class=""lang-py prettyprint-override""><code>➜  model_optimizer sudo python3 mo_tf.py --input_model ssd.pb          
+Password:
+Model Optimizer arguments:
+Common parameters:
+    - Path to the Input Model:  /opt/intel/openvino_2019.1.144/deployment_tools/model_optimizer/ssd.pb
+    - Path for generated IR:    /opt/intel/openvino_2019.1.144/deployment_tools/model_optimizer/.
+    - IR output name:   ssd
+    - Log level:    ERROR
+    - Batch:    Not specified, inherited from the model
+    - Input layers:     Not specified, inherited from the model
+    - Output layers:    Not specified, inherited from the model
+    - Input shapes:     Not specified, inherited from the model
+    - Mean values:  Not specified
+    - Scale values:     Not specified
+    - Scale factor:     Not specified
+    - Precision of IR:  FP32
+    - Enable fusing:    True
+    - Enable grouped convolutions fusing:   True
+    - Move mean values to preprocess section:   False
+    - Reverse input channels:   False
+TensorFlow specific parameters:
+    - Input model in text protobuf format:  False
+    - Path to model dump for TensorBoard:   None
+    - List of shared libraries with TensorFlow custom layers implementation:    None
+    - Update the configuration file with input/output node names:   None
+    - Use configuration file used to generate the model with Object Detection API:  None
+    - Operations to offload:    None
+    - Patterns to offload:  None
+    - Use the config file:  None
+Model Optimizer version:    2019.1.1-83-g28dfbfd
+WARNING: Logging before flag parsing goes to stderr.
+E0722 17:24:22.964164 4474824128 infer.py:158] Shape [-1 -1 -1  3] is not fully defined for output 0 of ""image_tensor"". Use --input_shape with positive integers to override model input shapes.
+E0722 17:24:22.964462 4474824128 infer.py:178] Cannot infer shapes or values for node ""image_tensor"".
+E0722 17:24:22.964554 4474824128 infer.py:179] Not all output shapes were inferred or fully defined for node ""image_tensor"". 
+ For more information please refer to Model Optimizer FAQ (&lt;INSTALL_DIR&gt;/deployment_tools/documentation/docs/MO_FAQ.html), question #40. 
+E0722 17:24:22.964632 4474824128 infer.py:180] 
+E0722 17:24:22.964720 4474824128 infer.py:181] It can happen due to bug in custom shape infer function &lt;function tf_placeholder_ext.&lt;locals&gt;.&lt;lambda&gt; at 0x12ab64bf8&gt;.
+E0722 17:24:22.964787 4474824128 infer.py:182] Or because the node inputs have incorrect values/shapes.
+E0722 17:24:22.964850 4474824128 infer.py:183] Or because input shapes are incorrect (embedded to the model or passed via --input_shape).
+E0722 17:24:22.965915 4474824128 infer.py:192] Run Model Optimizer with --log_level=DEBUG for more information.
+E0722 17:24:22.966033 4474824128 main.py:317] Exception occurred during running replacer ""REPLACEMENT_ID"" (&lt;class 'extensions.middle.PartialInfer.PartialInfer'&gt;): Stopped shape/value propagation at ""image_tensor"" node. 
+ For more information please refer to Model Optimizer FAQ (&lt;INSTALL_DIR&gt;/deployment_tools/documentation/docs/MO_FAQ.html), question #38.
+</code></pre>
+
+<p>How do you think we should fix this?</p>
+","<p>for conversion of mobilenetv2 ssd add ""Postprocessor/Cast_1"" in original ssd_v2_support.json and use following command. it should work fine.</p>
+
+<pre><code>""instances"": {
+            ""end_points"": [
+                ""detection_boxes"",
+                ""detection_scores"",
+                ""num_detections""
+            ],
+            ""start_points"": [
+                ""Postprocessor/Shape"",
+                ""Postprocessor/scale_logits"",
+                ""Postprocessor/Tile"",
+                ""Postprocessor/Reshape_1"",
+                ""Postprocessor/Cast_1""
+            ]
+        },
+</code></pre>
+
+<p>then use following command</p>
+
+<pre><code>#### object detection conversion
+
+import platform
+is_win = 'windows' in platform.platform().lower()
+
+mo_tf_path = '/opt/intel/openvino/deployment_tools/model_optimizer/mo_tf.py'
+json_file = '/opt/intel/openvino/deployment_tools/model_optimizer/extensions/front/tf/ssd_v2_support.json'
+pb_file =          'model/frozen_inference_graph.pb'
+pipeline_file =       'model/pipeline.config'
+output_dir =       'output/'
+
+img_height = 300
+input_shape = [1,img_height,img_height,3]
+input_shape_str = str(input_shape).replace(' ','')
+input_shape_str
+
+!python3 {mo_tf_path} --input_model {pb_file}  --tensorflow_object_detection_api_pipeline_config {pipeline_file} --tensorflow_use_custom_operations_config {json_file} --output=""detection_boxes,detection_scores,num_detections"" --output_dir {output_dir} --reverse_input_channels --data_type FP16 --log_level DEBUG 
+
+</code></pre>
+","981","0","3","<python-3.x><tensorflow><raspberry-pi><openvino><movidius>"
+"66965182","opencv dnn module with OpenVino","2021-04-06 08:29:18","<p>I have no problems when working with dnn module
+But I have downloaded OPENVINO to use dnn with engine inference, and I can't load the opencv_dnn452d.dll library
+When I go to the opencv subdirecotry in openvino, and execute opencv_version_win32d.exe, I get this output, that says that inference engine has 3 backends (ONETBB, TBB and OPENM) , but none of them can be checked correctly:</p>
+<pre><code>[ INFO:0] global C:\jenkins\workspace\OpenCV\OpenVINO\2021.3\build\windows\opencv\modules\core\src\parallel\registry_parallel.impl.hpp (90) cv::parallel::ParallelBackendRegistry::ParallelBackendRegistry core(parallel): Enabled backends(3, sorted by priority): ONETBB(1000); TBB(990); OPENMP(980)
+[ INFO:0] global C:\jenkins\workspace\OpenCV\OpenVINO\2021.3\build\windows\opencv\modules\core\src\utils\plugin_loader.impl.hpp (67) cv::plugin::impl::DynamicLib::libraryLoad load C:\Program Files (x86)\Intel\openvino_2021.3.394\opencv\bin\opencv_core_parallel_onetbb452_64d.dll =&gt; FAILED
+[ INFO:0] global C:\jenkins\workspace\OpenCV\OpenVINO\2021.3\build\windows\opencv\modules\core\src\utils\plugin_loader.impl.hpp (67) cv::plugin::impl::DynamicLib::libraryLoad load opencv_core_parallel_onetbb452_64d.dll =&gt; FAILED
+[ INFO:0] global C:\jenkins\workspace\OpenCV\OpenVINO\2021.3\build\windows\opencv\modules\core\src\utils\plugin_loader.impl.hpp (67) cv::plugin::impl::DynamicLib::libraryLoad load C:\Program Files (x86)\Intel\openvino_2021.3.394\opencv\bin\opencv_core_parallel_tbb452_64d.dll =&gt; FAILED
+[ INFO:0] global C:\jenkins\workspace\OpenCV\OpenVINO\2021.3\build\windows\opencv\modules\core\src\utils\plugin_loader.impl.hpp (67) cv::plugin::impl::DynamicLib::libraryLoad load opencv_core_parallel_tbb452_64d.dll =&gt; FAILED
+[ INFO:0] global C:\jenkins\workspace\OpenCV\OpenVINO\2021.3\build\windows\opencv\modules\core\src\utils\plugin_loader.impl.hpp (67) cv::plugin::impl::DynamicLib::libraryLoad load C:\Program Files (x86)\Intel\openvino_2021.3.394\opencv\bin\opencv_core_parallel_openmp452_64d.dll =&gt; FAILED
+[ INFO:0] global C:\jenkins\workspace\OpenCV\OpenVINO\2021.3\build\windows\opencv\modules\core\src\utils\plugin_loader.impl.hpp (67) cv::plugin::impl::DynamicLib::libraryLoad load opencv_core_parallel_openmp452_64d.dll =&gt; FAILED
+</code></pre>
+<p>What do I have to do to get inference engine working correctly?
+Thanks in advance for your answer</p>
+","<p>First and foremost you need to install some pre-requisite for OpenVINO.</p>
+<p>Then, you need to set it up properly in your system.</p>
+<p>You can follow <a href=""https://docs.openvinotoolkit.org/latest/openvino_docs_install_guides_installing_openvino_windows.html"" rel=""nofollow noreferrer"">this step by step guide</a>.</p>
+","976","0","1","<c++><opencv><openvino>"
+"58803122","Exporting TensorFlow 2 model to OpenVino","2019-11-11 14:17:50","<p>I want to export (optimize) a TensorFlow 2 model to OpenVino.</p>
+
+<p>The only documentation I found regards Tensorflow 1. When followed the instructions, the OpenVino model optimization failed to work with a tf2 model.</p>
+","<p>OpenVino Model Optimizer does not support Tensorflow 2.0 yet. 
+But, you can use Tensorflow 1.14 freeze_graph.py to freeze a TF 2.0 model.
+This frozen pb should be accepted by Model Optimizer.</p>
+","899","0","1","<tensorflow><tensorflow2.0><openvino>"
+"68500664","Openvino nsc2 with docker : Can't initialize GTK backend in function 'cvInitSystem'","2021-07-23 14:16:41","<p>I do have some troubles with openvino and the Neural Compute Stick 2 on docker:</p>
+<p>When I try to run :</p>
+<pre><code>python3 object_de
+tection_demo.py -d MYRIAD -i /home/openvino/video.mp4 -m /home/openvino/person-vehicle-bike-detection-2004.xml -at ssd --labels /home/openvino/data/dataset_classes/coco_91cl_bkgr.txt -o /home/openvino/output_video.mp4
+ 
+</code></pre>
+<p>It doesn't workd and it takes 1 minute to give me this message , whicht is strange due to the ncs2.</p>
+<pre><code>[ INFO ] Initializing Inference Engine...
+[ INFO ] Loading network...
+[ INFO ] Reading network from IR...
+[ INFO ] Use BoxesLabelsParser
+[ INFO ] Loading network to MYRIAD plugin...
+[ INFO ] Starting inference...
+To close the application, press 'CTRL+C' here or switch to the output window and press ESC key
+OpenCV: FFMPEG: tag 0x47504a4d/'MJPG' is not supported with codec id 8 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x7634706d/'mp4v'
+Unable to init server: Could not connect: Connection refused
+Traceback (most recent call last):
+  File &quot;object_detection_demo.py&quot;, line 350, in &lt;module&gt;
+    sys.exit(main() or 0)
+  File &quot;object_detection_demo.py&quot;, line 278, in main
+    cv2.imshow('Detection Results', frame)
+cv2.error: OpenCV(4.5.3-openvino) ../opencv/modules/highgui/src/window_gtk.cpp:635: error: (-2:Unspecified error) Can't initialize GTK backend in function 'cvInitSystem'
+</code></pre>
+<p>Any idea ?? Thanks !!</p>
+","<p>This is an error due to X11 forwarding in docker. GTK backend can't be initialized when X11 forwarding is disabled.<br />
+Follow instructions here: <a href=""https://stackoverflow.com/questions/48235040/run-x-application-in-a-docker-container-reliably-on-a-server-connected-via-ssh-w"">Run X application in a Docker container reliably on a server connected via SSH without &quot;--net host&quot;</a></p>
+","898","0","1","<python><docker><helper><openvino>"
+"65225588","openvino python inference api import error","2020-12-09 22:02:38","<p>I want to use openvino for object detection.<br />
+I installed it in conda environment on ubuntu 20.</p>
+<p>I added this line in .bashrc:</p>
+<pre><code>export LD_LIBRARY_PATH=/home/user/anaconda3/envs/openvino/bin/python3/../../lib:${LD_LIBRARY_PATH}
+</code></pre>
+<p>I run after:</p>
+<pre><code>source .bashrc
+
+which python  # gives /home/user/anaconda3/envs/openvino/bin/python
+echo $PYTHONPATH # does not return anything
+</code></pre>
+<p>I try to import:</p>
+<pre><code>from openvino.inference_engine import IENetwork, IECore
+</code></pre>
+<p>I go this error:</p>
+<p><strong>from .ie_api import *<br />
+ImportError: libtbb.so.2: cannot open shared object file: No such file or directory</strong></p>
+","<p>Make sure you had carefully followed <a href=""https://docs.openvinotoolkit.org/latest/openvino_docs_get_started_get_started_linux.html"" rel=""nofollow noreferrer"">these installation step</a>.
+You should be able to run the examples if you had set the OpenVINO toolkit and its pre-requisite correctly.</p>
+<p>Afterward, you can try to proceed with your attempt.
+Please take note that currently only these Operating Systems are supported:</p>
+<p><strong>Ubuntu 18.04.x</strong> long-term support (LTS), 64-bit</p>
+<p>CentOS 7.6, 64-bit (for target only)</p>
+<p>Yocto Project v3.0, 64-bit (for target only and requires modifications)</p>
+","891","1","1","<opencv><deep-learning><openvino>"
+"56530826","How to use the Pre trained models provided by Intel's OpenVINO","2019-06-10 17:20:34","<p>I am interested in a certain demo for OpenVino which is the smart classroom
+link:<a href=""https://github.com/opencv/open_model_zoo/tree/master/demos/smart_classroom_demo"" rel=""nofollow noreferrer"">https://github.com/opencv/open_model_zoo/tree/master/demos/smart_classroom_demo</a></p>
+
+<p>But I only want the function of detecting raised hands hence I see that it provided the pre trained model here : <a href=""https://download.01.org/opencv/2019/open_model_zoo/R1/20190404_140900_models_bin/person-detection-raisinghand-recognition-0001/FP16/"" rel=""nofollow noreferrer"">https://download.01.org/opencv/2019/open_model_zoo/R1/20190404_140900_models_bin/person-detection-raisinghand-recognition-0001/FP16/</a></p>
+
+<p>My Question is how can I utilize the pre trained models?</p>
+
+<p>I have basic understanding of OpenCV for both in Python and C++ so if anyone could actually lead me to articles that explain steps by steps on how to use this model, it would be very helpful.</p>
+","<p>The Intel® Distribution of OpenVINO™ toolkit (formerly Intel® CV SDK) contains optimized OpenCV and OpenVX libraries, deep learning code samples, and pretrained models to enhance computer vision development.</p>
+
+<p>It’s validated on 100+ open source and custom models, and is available absolutely free.</p>
+
+<p>Kindly refer the below links to get an idea on this.</p>
+
+<p><a href=""https://github.com/opencv/open_model_zoo/blob/master/intel_models/person-detection-raisinghand-recognition-0001/description/person-detection-raisinghand-recognition-0001.md"" rel=""nofollow noreferrer"">https://github.com/opencv/open_model_zoo/blob/master/intel_models/person-detection-raisinghand-recognition-0001/description/person-detection-raisinghand-recognition-0001.md</a></p>
+
+<p><a href=""https://docs.openvinotoolkit.org/latest/_person_detection_action_recognition_0005_description_person_detection_action_recognition_0005.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_person_detection_action_recognition_0005_description_person_detection_action_recognition_0005.html</a></p>
+
+<p><a href=""https://docs.openvinotoolkit.org/latest/_docs_MO_DG_Deep_Learning_Model_Optimizer_DevGuide.html"" rel=""nofollow noreferrer"">https://docs.openvinotoolkit.org/latest/_docs_MO_DG_Deep_Learning_Model_Optimizer_DevGuide.html</a></p>
+
+<p><a href=""https://techdecoded.intel.io/essentials/optimize-deep-learning-inference-applications-using-openvino-toolkit/#gs.l98omp"" rel=""nofollow noreferrer"">https://techdecoded.intel.io/essentials/optimize-deep-learning-inference-applications-using-openvino-toolkit/#gs.l98omp</a></p>
+
+<p><a href=""https://stackoverflow.com/questions/55345798/how-to-use-openvino-pre-trained-models"">How to use OpenVINO pre-trained models?</a></p>
+
+<p>Hope these will help you.</p>
+","876","-1","1","<opencv><openvino>"
